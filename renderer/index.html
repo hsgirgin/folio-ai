@@ -2,185 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Folio AI | Workspace</title>
+  <title>Folio AI | Pro Workspace</title>
   <style>
     :root {
-      --bg: #0b0f1a;
-      --panel: #161b2c;
+      --bg: #0f172a;
+      --panel: #1e293b;
       --accent: #38bdf8;
+      --pinned: #fbce44;
       --text: #f1f5f9;
       --text-dim: #94a3b8;
-      --border: #2d3748;
-      --sidebar-width: 260px;
+      --border: #334155;
     }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      margin: 0;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* Sidebar Transitions */
-    #sidebar {
-      width: var(--sidebar-width);
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      transition: margin-left 0.3s ease;
-      z-index: 10;
-    }
-
-    #sidebar.closed { margin-left: calc(var(--sidebar-width) * -1); }
-
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+    
+    #sidebar { width: 280px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s ease; }
+    #sidebar.closed { margin-left: -280px; }
     .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
 
-    /* Main Area */
-    .editor-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    .toolbar {
-      padding: 10px 20px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    .editor-container { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
+    
+    .toolbar { 
+      background: var(--panel); 
+      padding: 8px 20px; 
+      display: flex; 
+      gap: 10px; 
       border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    
+    .tool-btn { 
+      background: transparent; border: 1px solid var(--border); color: white; 
+      padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 0.75rem;
+    }
+    .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    #title { background: transparent; border: none; font-size: 2.2rem; color: white; font-weight: 700; padding: 20px 40px 10px 40px; outline: none; }
+    
+    #content { 
+      flex: 1; padding: 10px 40px; overflow-y: auto; outline: none; 
+      line-height: 1.7; font-size: 1.1rem; color: var(--text);
     }
 
-    .icon-btn {
-      background: none;
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 1.2rem;
-      padding: 5px;
-    }
-    .icon-btn:hover { color: var(--accent); }
-
-    /* Inputs */
-    #title {
-      background: transparent;
-      border: none;
-      font-size: 2.2rem;
-      color: white;
-      font-weight: 700;
-      padding: 30px 40px 10px 40px;
-      outline: none;
-    }
-
-    #content {
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-size: 1.1rem;
-      line-height: 1.7;
-      padding: 10px 40px;
-      flex: 1;
-      resize: none;
-      outline: none;
-    }
-
-    /* AI Panel */
-    .ai-panel {
-      width: 320px;
-      background: var(--panel);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      transition: width 0.3s ease, padding 0.3s ease;
-    }
-
-    .ai-panel.closed { width: 0; padding: 0; overflow: hidden; border-left: none; }
-
-    .ai-header { font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; }
-
-    .note-item {
-      padding: 10px;
-      margin-bottom: 5px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: 0.2s;
-      color: var(--text-dim);
-    }
-    .note-item:hover { background: #232a3d; color: white; }
-    .note-item.active { background: var(--accent); color: var(--bg); font-weight: 600; }
-
-    .btn-primary {
-      background: var(--accent);
-      color: var(--bg);
-      border: none;
-      padding: 10px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 10px;
-    }
+    /* AI Panel & Toggle */
+    #aiPanel { width: 320px; background: var(--panel); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; transition: 0.3s; }
+    #aiPanel.closed { width: 0; padding: 0; opacity: 0; border: none; pointer-events: none; }
 
     .toggle-group {
       display: flex;
       background: var(--bg);
-      border-radius: 6px;
-      padding: 3px;
-      margin-bottom: 15px;
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
     }
     .toggle-group button {
       flex: 1;
-      background: none;
+      background: transparent;
       border: none;
       color: var(--text-dim);
-      padding: 6px;
+      padding: 8px;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
     }
-    .toggle-group button.active { background: #232a3d; color: var(--accent); }
+    .toggle-group button.active {
+      background: var(--border);
+      color: var(--accent);
+    }
 
-    #response {
-      background: var(--bg);
-      padding: 15px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      line-height: 1.5;
-      flex: 1;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      color: #cbd5e1;
-      border: 1px solid var(--border);
-    }
+    .btn-main { background: var(--accent); color: var(--bg); border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px; }
+    
+    .note-item { padding: 10px; margin-bottom: 5px; cursor: pointer; border-radius: 6px; font-size: 0.9rem; color: var(--text-dim); display: flex; justify-content: space-between; align-items: center; }
+    .note-item.active { background: var(--accent); color: var(--bg); font-weight: bold; }
+    
+    #response { background: var(--bg); padding: 15px; border-radius: 8px; font-size: 0.85rem; flex: 1; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap; }
   </style>
 </head>
 <body>
 
   <div id="sidebar">
     <div class="sidebar-content">
-      <button class="btn-primary" onclick="newNote()">+ New Note</button>
+      <button class="btn-main" onclick="newNote()">+ New Note</button>
       <div id="notesList"></div>
     </div>
   </div>
 
   <div class="editor-container">
     <div class="toolbar">
-      <button class="icon-btn" onclick="toggleSidebar()">☰</button>
-      <div style="flex: 1"></div>
-      <button class="icon-btn" onclick="toggleAI()">🪄 AI Assistant</button>
+      <button class="tool-btn" onclick="toggleSidebar()">☰</button>
+      <button class="tool-btn" onclick="format('bold')">B</button>
+      <button class="tool-btn" onclick="format('italic')">I</button>
+      <button class="tool-btn" onclick="insertTable()">+ Table</button>
+      <button class="tool-btn" onclick="exportMarkdown()">💾 Export .md</button>
+      <div style="flex:1"></div>
+      <button class="tool-btn" style="color:var(--accent)" onclick="toggleAI()">🪄 AI Assistant</button>
     </div>
-    <input id="title" placeholder="Note Title" oninput="saveCurrentNote()">
-    <textarea id="content" placeholder="Type your thoughts here..." oninput="saveCurrentNote()"></textarea>
+    
+    <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
+    <div id="content" contenteditable="true" oninput="saveCurrentNote()"></div>
   </div>
 
-  <div id="aiPanel" class="ai-panel">
-    <div class="ai-header">
-      <span>AI TOOLS</span>
-      <button class="icon-btn" style="font-size: 0.9rem" onclick="toggleAI()">✕</button>
+  <div id="aiPanel">
+    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+      <span style="font-size:0.7rem; color:var(--accent); font-weight:bold;">AI ENGINE</span>
+      <button onclick="toggleAI()" style="background:none; border:none; color:var(--text-dim); cursor:pointer;">✕</button>
     </div>
 
     <div class="toggle-group">
@@ -188,10 +115,9 @@
       <button id="modeCloud" onclick="setMode('cloud')">Cloud</button>
     </div>
 
-    <button class="btn-primary" style="background: #2d3748; color: white;" onclick="aiAction('summarize')">Summarize</button>
-    <button class="btn-primary" style="background: #2d3748; color: white;" onclick="aiAction('improve')">Improve Writing</button>
-    
-    <div id="response">Waiting for request...</div>
+    <button class="btn-main" style="background:#334155; color:white" onclick="aiAction('summarize')">Summarize</button>
+    <button class="btn-main" style="background:#334155; color:white" onclick="aiAction('improve')">Improve Draft</button>
+    <div id="response">Ready.</div>
   </div>
 
   <script src="app.js"></script>
