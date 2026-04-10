@@ -1,43 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
-        .sidebar { width: 250px; background: rgba(30, 41, 59, 0.5); border-right: 1px solid #334155; padding: 20px; }
-        .editor { flex: 1; padding: 40px; display: flex; flex-direction: column; }
-        .ai-panel { width: 320px; background: var(--card); border-left: 1px solid #334155; padding: 20px; }
-        
-        input#title { background: transparent; border: none; font-size: 2rem; color: white; outline: none; margin-bottom: 10px;}
-        textarea#content { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; flex: 1; resize: none; outline: none; }
-        
-        .tabs { display: flex; gap: 15px; margin-bottom: 20px; font-size: 0.8rem; }
-        .tab { cursor: pointer; opacity: 0.5; }
-        .tab.active { opacity: 1; border-bottom: 2px solid var(--accent); }
-        
-        .btn { width: 100%; padding: 10px; background: var(--accent); border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        #response { background: #0f172a; padding: 10px; border-radius: 5px; height: 200px; overflow-y: auto; font-size: 0.9rem; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Folio</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; background: #f9f9f9; }
+    .sidebar { width: 250px; border-right: 1px solid #ddd; padding: 12px; background: #fff; }
+    .main { flex: 1; display: flex; flex-direction: column; background: #fff; }
+    #title { font-size: 24px; padding: 12px; border: none; border-bottom: 1px solid #ddd; outline: none; }
+    #content { flex: 1; padding: 12px; border: none; resize: none; outline: none; font-size: 16px; }
+    
+    .ai { width: 320px; border-left: 1px solid #ddd; padding: 12px; background: #fff; display: flex; flex-direction: column; }
+    .ai-toggle { display: flex; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+    .ai-toggle button { flex: 1; border: none; padding: 8px; cursor: pointer; background: #eee; }
+    .ai-toggle button.active { background: #007bff; color: white; }
+    
+    button { margin: 4px 0; width: 100%; padding: 8px; cursor: pointer; }
+    pre { white-space: pre-wrap; background: #f0f0f0; padding: 10px; border-radius: 4px; flex: 1; overflow-y: auto; font-size: 14px; }
+  </style>
 </head>
 <body>
-    <div class="sidebar">
-        <button class="btn" onclick="newNote()">+ New Note</button>
-        <div id="notesList"></div>
+  <div class="sidebar">
+    <button onclick="newNote()">+ New Note</button>
+    <div id="notesList"></div>
+  </div>
+
+  <div class="main">
+    <input id="title" placeholder="Note title" oninput="saveCurrentNote()" />
+    <textarea id="content" placeholder="Write here..." oninput="saveCurrentNote()"></textarea>
+  </div>
+
+  <div class="ai">
+    <strong>AI Source</strong>
+    <div class="ai-toggle">
+      <button id="btnLocal" class="active" onclick="setMode('local')">Local</button>
+      <button id="btnCloud" onclick="setMode('cloud')">Cloud</button>
     </div>
-    <div class="editor">
-        <input id="title" placeholder="Untitled Note" oninput="saveCurrentNote()">
-        <textarea id="content" placeholder="Type here..." oninput="saveCurrentNote()"></textarea>
-    </div>
-    <div class="ai-panel">
-        <div class="tabs">
-            <span id="tab-local" class="tab" onclick="setAiSource('local')">Local</span>
-            <span id="tab-cloud" class="tab" onclick="setAiSource('cloud')">Ollama Cloud</span>
-        </div>
-        <button class="btn" onclick="aiAction('summarize')">Summarize</button>
-        <button class="btn" onclick="aiAction('improve')">Improve Writing</button>
-        <div id="response">Waiting for action...</div>
-        <button class="btn" style="background: transparent; border: 1px solid #475569; color: #94a3b8; margin-top: 20px;" onclick="installModel()">Install/Pull Model</button>
-    </div>
-    <script src="app.js"></script>
+
+    <button onclick="aiAction('summarize')">Summarize</button>
+    <button onclick="aiAction('improve')">Improve Writing</button>
+    <textarea id="query" placeholder="Ask about note..." rows="3"></textarea>
+    <button onclick="askCustom()">Ask AI</button>
+    
+    <div style="margin-top: 10px;"><strong>Response:</strong></div>
+    <pre id="response">Waiting for action...</pre>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
