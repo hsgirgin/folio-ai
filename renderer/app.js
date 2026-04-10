@@ -1,22 +1,19 @@
 let notes = JSON.parse(localStorage.getItem('folio-notes') || '[]');
 let currentNoteId = null;
-let currentMode = 'local'; // Restored mode state
+let currentMode = 'local';
 let saveTimeout = null;
 
 const ollamaUrl = window.folioAPI.ollamaUrl;
 const LOCAL_MODEL = 'llama3.1:8b';
 const CLOUD_MODEL = 'gpt-oss:120b-cloud';
 
-// --- UI HELPERS ---
+// --- UI & RICH TEXT ---
 window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('closed');
 window.toggleAI = () => document.getElementById('aiPanel').classList.toggle('closed');
-
-// Restored Mode Selection Logic
 window.setMode = (mode) => {
     currentMode = mode;
     document.getElementById('modeLocal').classList.toggle('active', mode === 'local');
     document.getElementById('modeCloud').classList.toggle('active', mode === 'cloud');
-    document.getElementById('response').innerText = `Engine switched to ${mode.toUpperCase()}.`;
 };
 
 window.format = (cmd, val = null) => {
@@ -92,7 +89,7 @@ window.saveCurrentNote = () => {
     }, 500);
 };
 
-// --- EXPORT & AI ---
+// --- EXPORT ---
 window.exportMarkdown = () => {
     const note = notes.find(n => n.id === currentNoteId);
     if (!note) return;
@@ -104,27 +101,53 @@ window.exportMarkdown = () => {
     a.click();
 };
 
+// --- AI STREAMING & MARKDOWN ---
 window.aiAction = async (type) => {
     const note = notes.find(n => n.id === currentNoteId);
     if (!note) return;
     
-    // Uses the mode selected by the toggle
     const model = currentMode === 'local' ? LOCAL_MODEL : CLOUD_MODEL;
-    const resp = document.getElementById('response');
-    resp.innerText = `[${currentMode.toUpperCase()}] Thinking...`;
+    const respEl = document.getElementById('response');
+    respEl.innerText = ""; // Clear previous
+    
+    let fullText = "";
 
     try {
-        const res = await fetch(`${ollamaUrl}/api/chat`, {
+        const response = await fetch(`${ollamaUrl}/api/chat`, {
             method: 'POST',
             body: JSON.stringify({
                 model: model,
-                stream: false,
-                messages: [{ role: 'user', content: `${type}: ${document.getElementById('content').innerText}` }]
+                messages: [{ role: 'user', content: `${type}: ${document.getElementById('content').innerText}` }],
+                stream: true // Enable streaming
             })
         });
-        const data = await res.json();
-        resp.innerText = data.message.content;
-    } catch { resp.innerText = "Error: Is Ollama running?"; }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const json = JSON.parse(line);
+                    if (json.message && json.message.content) {
+                        fullText += json.message.content;
+                        // Render Markdown on the fly
+                        respEl.innerHTML = marked.parse(fullText);
+                        respEl.scrollTop = respEl.scrollHeight; // Auto-scroll
+                    }
+                } catch (e) { console.error("Error parsing chunk", e); }
+            }
+        }
+    } catch (err) {
+        respEl.innerText = "Connection failed. Is Ollama running?";
+    }
 };
 
 renderNotes();
