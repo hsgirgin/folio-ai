@@ -4,7 +4,6 @@ const { spawn } = require('child_process');
 
 function ensureOllamaRunning() {
   try {
-    // Attempt to start Ollama serve in the background
     const proc = spawn('ollama', ['serve'], {
       detached: true,
       stdio: 'ignore'
@@ -26,7 +25,6 @@ function createWindow() {
     }
   });
 
-  // Points specifically to the renderer folder
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 

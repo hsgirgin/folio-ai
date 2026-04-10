@@ -6,63 +6,18 @@ const ollamaUrl = window.folioAPI.ollamaUrl;
 const LOCAL_MODEL = 'llama3.1:8b';
 const CLOUD_MODEL = 'gpt-oss:120b-cloud';
 
-// Verify if the model is installed before running an action
-async function verifyModel(modelName) {
-  try {
-    const res = await fetch(`${ollamaUrl}/api/tags`);
-    const data = await res.json();
-    const isInstalled = data.models.some(m => m.name.includes(modelName));
-    return isInstalled;
-  } catch (err) {
-    console.error("Connection error:", err);
-    return false;
-  }
-}
+// UI Helpers
+window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('closed');
+window.toggleAI = () => document.getElementById('aiPanel').classList.toggle('closed');
 
-// Pull (Install) model logic
-window.installModel = async function(modelName) {
-  const responseEl = document.getElementById('response');
-  responseEl.innerText = `Installing ${modelName}... Please wait.`;
-  try {
-    await fetch(`${ollamaUrl}/api/pull`, {
-      method: 'POST',
-      body: JSON.stringify({ name: modelName, stream: false })
-    });
-    responseEl.innerText = `✅ ${modelName} installed! Try your request again.`;
-  } catch (err) {
-    responseEl.innerText = `Installation failed: ${err.message}`;
-  }
-};
-
-window.setMode = function(mode) {
+window.setMode = (mode) => {
   currentMode = mode;
   document.getElementById('modeLocal').classList.toggle('active', mode === 'local');
   document.getElementById('modeCloud').classList.toggle('active', mode === 'cloud');
-  document.getElementById('response').innerText = `Switched to ${mode} mode.`;
 };
 
-window.newNote = function() {
-  const note = { id: Date.now(), title: '', content: '' };
-  notes.unshift(note);
-  currentNoteId = note.id;
-  document.getElementById('title').value = '';
-  document.getElementById('content').value = '';
-  saveNotes();
-  renderNotes();
-};
-
-window.saveCurrentNote = function() {
-  const note = notes.find(n => n.id === currentNoteId);
-  if (!note) return;
-  note.title = document.getElementById('title').value;
-  note.content = document.getElementById('content').value;
-  saveNotes();
-  renderNotes();
-};
-
-function saveNotes() {
-  localStorage.setItem('folio-notes', JSON.stringify(notes));
-}
+// Data Management
+function saveNotes() { localStorage.setItem('folio-notes', JSON.stringify(notes)); }
 
 function renderNotes() {
   const el = document.getElementById('notesList');
@@ -70,11 +25,22 @@ function renderNotes() {
   notes.forEach(note => {
     const div = document.createElement('div');
     div.className = `note-item ${note.id === currentNoteId ? 'active' : ''}`;
-    div.textContent = note.title || 'Untitled';
+    div.textContent = note.title || 'Untitled Note';
     div.onclick = () => openNote(note.id);
     el.appendChild(div);
   });
 }
+
+window.newNote = () => {
+  const note = { id: Date.now(), title: '', content: '' };
+  notes.unshift(note);
+  currentNoteId = note.id;
+  document.getElementById('title').value = '';
+  document.getElementById('content').value = '';
+  saveNotes();
+  renderNotes();
+  document.getElementById('title').focus();
+};
 
 function openNote(id) {
   currentNoteId = id;
@@ -85,72 +51,61 @@ function openNote(id) {
   renderNotes();
 }
 
-window.aiAction = async function(type) {
+window.saveCurrentNote = () => {
+  const note = notes.find(n => n.id === currentNoteId);
+  if (!note) return;
+  note.title = document.getElementById('title').value;
+  note.content = document.getElementById('content').value;
+  saveNotes();
+  renderNotes();
+};
+
+// AI Engine
+async function verifyModel(modelName) {
+  try {
+    const res = await fetch(`${ollamaUrl}/api/tags`);
+    const data = await res.json();
+    return data.models.some(m => m.name.includes(modelName));
+  } catch { return false; }
+}
+
+window.installModel = async (modelName) => {
+  const resp = document.getElementById('response');
+  resp.innerText = `Starting download for ${modelName}... Check Ollama tray for progress.`;
+  await fetch(`${ollamaUrl}/api/pull`, { method: 'POST', body: JSON.stringify({ name: modelName, stream: false }) });
+};
+
+window.aiAction = async (type) => {
   const note = notes.find(n => n.id === currentNoteId);
   if (!note || !note.content) return;
 
   const model = currentMode === 'local' ? LOCAL_MODEL : CLOUD_MODEL;
-  const responseEl = document.getElementById('response');
+  const resp = document.getElementById('response');
 
-  // Check model every time button is clicked
+  resp.innerText = "Checking model...";
   const isReady = await verifyModel(model);
   if (!isReady) {
-    responseEl.innerHTML = `⚠️ ${model} not found. <button onclick="installModel('${model}')">Install Now</button>`;
+    resp.innerHTML = `⚠️ ${model} missing.<br><button class="btn-primary" onclick="installModel('${model}')">Install Model</button>`;
     return;
   }
 
-  const prompts = {
-    summarize: 'Summarize this note.',
-    improve: 'Refine this text.'
-  };
-
-  responseEl.innerText = 'Thinking...';
+  resp.innerText = "AI is thinking...";
   try {
     const res = await fetch(`${ollamaUrl}/api/chat`, {
       method: 'POST',
       body: JSON.stringify({
         model: model,
         stream: false,
-        messages: [{ role: 'user', content: `${prompts[type]}: ${note.content}` }]
+        messages: [{ role: 'user', content: `${type === 'summarize' ? 'Summarize' : 'Rewrite professionally'}: ${note.content}` }]
       })
     });
     const data = await res.json();
-    responseEl.innerText = data.message.content;
-  } catch (err) {
-    responseEl.innerText = "Error: Could not connect to Ollama.";
+    resp.innerText = data.message.content;
+  } catch {
+    resp.innerText = "Connection lost. Is Ollama running?";
   }
 };
 
-window.askCustom = async function() {
-  const note = notes.find(n => n.id === currentNoteId);
-  const query = document.getElementById('query').value;
-  if (!note || !query) return;
-
-  const model = currentMode === 'local' ? LOCAL_MODEL : CLOUD_MODEL;
-  const responseEl = document.getElementById('response');
-
-  const isReady = await verifyModel(model);
-  if (!isReady) {
-    responseEl.innerHTML = `⚠️ ${model} not found. <button onclick="installModel('${model}')">Install Now</button>`;
-    return;
-  }
-
-  responseEl.innerText = 'Analyzing...';
-  try {
-    const res = await fetch(`${ollamaUrl}/api/chat`, {
-      method: 'POST',
-      body: JSON.stringify({
-        model: model,
-        stream: false,
-        messages: [{ role: 'user', content: `Note: ${note.content}\n\nQuestion: ${query}` }]
-      })
-    });
-    const data = await res.json();
-    responseEl.innerText = data.message.content;
-  } catch (err) {
-    responseEl.innerText = "Error: Could not connect to Ollama.";
-  }
-};
-
+// Init
 renderNotes();
 if (notes[0]) openNote(notes[0].id);
