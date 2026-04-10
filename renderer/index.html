@@ -1,69 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Folio AI</title>
-  <style>
-    :root {
-      --bg: #1a1a1a;
-      --sidebar-bg: #252525;
-      --accent: #007aff;
-      --text: #e0e0e0;
-      --border: #333;
-    }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      margin: 0; display: flex; height: 100vh; background: var(--bg); color: var(--text);
-    }
-    .sidebar { 
-      width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border); 
-      display: flex; flex-direction: column; padding: 15px;
-    }
-    .main { flex: 1; display: flex; flex-direction: column; background: var(--bg); }
-    .ai-panel { 
-      width: 300px; background: var(--sidebar-bg); border-left: 1px solid var(--border); 
-      padding: 20px; display: flex; flex-direction: column; gap: 10px;
-    }
-    input, textarea, pre {
-      background: #2a2a2a; color: white; border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px; outline: none;
-    }
-    #title { font-size: 22px; font-weight: bold; border: none; background: transparent; margin-bottom: 10px; }
-    #content { flex: 1; border: none; background: transparent; font-size: 16px; line-height: 1.6; resize: none; }
-    button {
-      background: var(--accent); color: white; border: none; padding: 10px;
-      border-radius: 6px; cursor: pointer; font-weight: 500; transition: opacity 0.2s;
-    }
-    button:hover { opacity: 0.8; }
-    .note-item {
-      padding: 10px; margin-bottom: 5px; border-radius: 6px; cursor: pointer;
-      transition: background 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .note-item:hover { background: #333; }
-    #response { font-size: 13px; font-family: monospace; overflow-y: auto; max-height: 300px; }
-  </style>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 250px; background: rgba(30, 41, 59, 0.5); border-right: 1px solid #334155; padding: 20px; }
+        .editor { flex: 1; padding: 40px; display: flex; flex-direction: column; }
+        .ai-panel { width: 320px; background: var(--card); border-left: 1px solid #334155; padding: 20px; }
+        
+        input#title { background: transparent; border: none; font-size: 2rem; color: white; outline: none; margin-bottom: 10px;}
+        textarea#content { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; flex: 1; resize: none; outline: none; }
+        
+        .tabs { display: flex; gap: 15px; margin-bottom: 20px; font-size: 0.8rem; }
+        .tab { cursor: pointer; opacity: 0.5; }
+        .tab.active { opacity: 1; border-bottom: 2px solid var(--accent); }
+        
+        .btn { width: 100%; padding: 10px; background: var(--accent); border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        #response { background: #0f172a; padding: 10px; border-radius: 5px; height: 200px; overflow-y: auto; font-size: 0.9rem; }
+    </style>
 </head>
 <body>
-  <div class="sidebar">
-    <button onclick="newNote()" style="margin-bottom: 20px;">+ New Note</button>
-    <div id="notesList"></div>
-  </div>
-
-  <div class="main">
-    <input id="title" placeholder="Untitled Note" oninput="saveCurrentNote()" />
-    <textarea id="content" placeholder="Start writing..." oninput="saveCurrentNote()"></textarea>
-  </div>
-
-  <div class="ai-panel">
-    <div style="font-weight: bold; margin-bottom: 10px;">AI TOOLS</div>
-    <button onclick="aiAction('summarize')">Summarize</button>
-    <button onclick="aiAction('improve')">Improve Writing</button>
-    <textarea id="query" rows="3" placeholder="Ask AI something..."></textarea>
-    <button onclick="askCustom()">Run Query</button>
-    <div style="margin-top: 10px; font-size: 12px; color: #888;">AI OUTPUT:</div>
-    <pre id="response">Waiting...</pre>
-  </div>
-
-  <script src="app.js"></script>
+    <div class="sidebar">
+        <button class="btn" onclick="newNote()">+ New Note</button>
+        <div id="notesList"></div>
+    </div>
+    <div class="editor">
+        <input id="title" placeholder="Untitled Note" oninput="saveCurrentNote()">
+        <textarea id="content" placeholder="Type here..." oninput="saveCurrentNote()"></textarea>
+    </div>
+    <div class="ai-panel">
+        <div class="tabs">
+            <span id="tab-local" class="tab" onclick="setAiSource('local')">Local</span>
+            <span id="tab-cloud" class="tab" onclick="setAiSource('cloud')">Ollama Cloud</span>
+        </div>
+        <button class="btn" onclick="aiAction('summarize')">Summarize</button>
+        <button class="btn" onclick="aiAction('improve')">Improve Writing</button>
+        <div id="response">Waiting for action...</div>
+        <button class="btn" style="background: transparent; border: 1px solid #475569; color: #94a3b8; margin-top: 20px;" onclick="installModel()">Install/Pull Model</button>
+    </div>
+    <script src="app.js"></script>
 </body>
 </html>

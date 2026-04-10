@@ -1,11 +1,24 @@
 {
-  "name": "folio-electron",
+  "name": "folio-ai",
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.folio.ai",
+    "win": { "target": "portable" },
+    "mac": { "target": "dmg" },
+    "linux": { "target": "AppImage" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ]
   },
   "devDependencies": {
-    "electron": "^41.2.0"
+    "electron": "^41.2.0",
+    "electron-builder": "^24.13.3"
   }
 }
