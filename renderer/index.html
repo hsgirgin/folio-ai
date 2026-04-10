@@ -4,190 +4,44 @@
   <meta charset="UTF-8">
   <title>Folio AI</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --sidebar: #1e293b;
-      --accent: #38bdf8;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --border: #334155;
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--text-main);
-      font-family: 'Inter', -apple-system, sans-serif;
-      margin: 0;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 260px;
-      background: var(--sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-    }
-
-    .btn-new {
-      background: var(--accent);
-      color: var(--bg);
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 20px;
-      transition: opacity 0.2s;
-    }
-
-    .note-item {
-      padding: 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .note-item:hover { background: #334155; color: white; }
-    .note-item.active { background: #334155; color: var(--accent); border-left: 3px solid var(--accent); }
-
-    /* Main Editor */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 40px;
-    }
-
-    #title {
-      background: transparent;
-      border: none;
-      font-size: 2.5rem;
-      color: white;
-      font-weight: 700;
-      margin-bottom: 20px;
-      outline: none;
-    }
-
-    #content {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      line-height: 1.6;
-      flex: 1;
-      resize: none;
-      outline: none;
-    }
-
-    /* AI Panel */
-    .ai-panel {
-      width: 340px;
-      background: var(--sidebar);
-      border-left: 1px solid var(--border);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .source-toggle {
-      display: flex;
-      background: #0f172a;
-      padding: 4px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-
-    .source-toggle button {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .source-toggle button.active {
-      background: var(--sidebar);
-      color: var(--accent);
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    }
-
-    .ai-btn {
-      background: #334155;
-      color: white;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: left;
-      font-size: 0.9rem;
-    }
-
-    .ai-btn:hover { border-color: var(--accent); }
-
-    #query {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
-      resize: none;
-      outline: none;
-    }
-
-    #response {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      padding: 15px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      color: #cbd5e1;
-      flex: 1;
-      overflow-y: auto;
-      line-height: 1.5;
-    }
+    :root { --bg: #0f172a; --sidebar: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --border: #334155; }
+    body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; }
+    .main { flex: 1; display: flex; flex-direction: column; padding: 40px; }
+    .ai-panel { width: 340px; background: var(--sidebar); border-left: 1px solid var(--border); padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+    input#title { background: transparent; border: none; font-size: 2rem; color: white; outline: none; margin-bottom: 20px; }
+    textarea#content { background: transparent; border: none; color: #94a3b8; font-size: 1.1rem; flex: 1; resize: none; outline: none; }
+    .btn { background: var(--accent); color: var(--bg); border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .note-item { padding: 10px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; background: rgba(255,255,255,0.05); }
+    .note-item.active { border-left: 3px solid var(--accent); color: var(--accent); }
+    .source-toggle { display: flex; gap: 5px; margin-bottom: 10px; }
+    .source-toggle button { flex: 1; background: #0f172a; color: white; border: 1px solid var(--border); padding: 5px; cursor: pointer; }
+    .source-toggle button.active { border-color: var(--accent); color: var(--accent); }
+    #query { background: #0f172a; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; resize: none; }
+    #response { background: #0f172a; padding: 15px; border-radius: 6px; font-size: 0.9rem; flex: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
   </style>
 </head>
 <body>
-
   <div class="sidebar">
-    <button class="btn-new" onclick="newNote()">+ New Note</button>
-    <div id="notesList"></div>
+    <button class="btn" onclick="newNote()">+ New Note</button>
+    <div id="notesList" style="margin-top: 20px;"></div>
   </div>
-
   <div class="main">
-    <input id="title" placeholder="Untitled" oninput="saveCurrentNote()" />
+    <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
     <textarea id="content" placeholder="Start writing..." oninput="saveCurrentNote()"></textarea>
   </div>
-
   <div class="ai-panel">
-    <h3>AI Assistant</h3>
+    <strong>AI Source</strong>
     <div class="source-toggle">
       <button id="modeLocal" class="active" onclick="setMode('local')">Local</button>
-      <button id="modeCloud" onclick="setMode('cloud')">Ollama Cloud</button>
+      <button id="modeCloud" onclick="setMode('cloud')">Cloud</button>
     </div>
-
-    <button class="ai-btn" onclick="aiAction('summarize')">✨ Summarize</button>
-    <button class="ai-btn" onclick="aiAction('improve')">✍️ Refine Text</button>
-    
+    <button class="btn" style="background: #334155; color: white;" onclick="aiAction('summarize')">✨ Summarize</button>
+    <button class="btn" style="background: #334155; color: white;" onclick="aiAction('improve')">✍️ Improve</button>
     <textarea id="query" rows="3" placeholder="Ask about this note..."></textarea>
-    <button class="btn-new" onclick="askCustom()">Ask AI</button>
-
-    <div id="response">Waiting for request...</div>
+    <button class="btn" onclick="askCustom()">Ask AI</button>
+    <div id="response">Ready...</div>
   </div>
-
   <script src="app.js"></script>
 </body>
 </html>
