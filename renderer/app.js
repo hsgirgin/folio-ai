@@ -10,6 +10,83 @@ const ollamaUrl = window.folioAPI.ollamaUrl;
 const LOCAL_MODEL = 'llama3.1:8b';
 const CLOUD_MODEL = 'gpt-oss:120b-cloud';
 
+marked.setOptions({
+    breaks: true,
+    gfm: true
+});
+
+function sanitizeHtml(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+
+    template.content.querySelectorAll('script, style, iframe, object, embed').forEach((node) => {
+        node.remove();
+    });
+
+    template.content.querySelectorAll('*').forEach((node) => {
+        [...node.attributes].forEach((attr) => {
+            const name = attr.name.toLowerCase();
+            const value = attr.value.trim().toLowerCase();
+
+            if (name.startsWith('on')) {
+                node.removeAttribute(attr.name);
+            }
+
+            if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
+                node.removeAttribute(attr.name);
+            }
+        });
+    });
+
+    return template.innerHTML;
+}
+
+function renderMarkdownToHtml(text) {
+    const source = (text || "").trim();
+    if (!source) return "";
+    return sanitizeHtml(marked.parse(source));
+}
+
+function insertHtmlAtRange(range, html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    const fragment = template.content.cloneNode(true);
+    const lastNode = fragment.lastChild;
+
+    range.deleteContents();
+    range.insertNode(fragment);
+
+    const selection = window.getSelection();
+    const nextRange = document.createRange();
+
+    if (lastNode?.parentNode) {
+        nextRange.setStartAfter(lastNode);
+    } else {
+        nextRange.selectNodeContents(document.getElementById('content'));
+    }
+
+    nextRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(nextRange);
+}
+
+function insertHtmlAtCursor(html) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return false;
+
+    const range = selection.getRangeAt(0);
+    const ancestor = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer.parentElement;
+
+    if (!ancestor?.closest('#content')) {
+        return false;
+    }
+
+    insertHtmlAtRange(range, html);
+    return true;
+}
+
 // --- AUTO-PULL LOGIC ---
 async function ensureModelExists(modelName) {
     if (currentMode === 'cloud') return true; // Skip for cloud
@@ -150,8 +227,8 @@ window.aiContextual = async (action) => {
 window.applyReplacement = () => {
     if (!lastRange || !lastAiResult) return;
     takeSnapshot();
-    lastRange.deleteContents();
-    lastRange.insertNode(document.createTextNode(lastAiResult));
+    const renderedHtml = renderMarkdownToHtml(lastAiResult) || `<p>${lastAiResult}</p>`;
+    insertHtmlAtRange(lastRange, renderedHtml);
     document.getElementById('replacementArea').style.display = 'none';
     saveCurrentNote();
 };
@@ -237,6 +314,22 @@ window.saveCurrentNote = (skipSnapshot = false) => {
         renderNotes();
     }, 500);
 };
+
+document.getElementById('content').addEventListener('paste', (event) => {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+
+    const html = clipboard.getData('text/html');
+    const text = clipboard.getData('text/plain');
+    const renderedHtml = html ? sanitizeHtml(html) : renderMarkdownToHtml(text);
+
+    if (!renderedHtml) return;
+
+    event.preventDefault();
+    takeSnapshot();
+    insertHtmlAtCursor(renderedHtml);
+    saveCurrentNote(true);
+});
 
 function renderNotes() {
     const el = document.getElementById('notesList');
