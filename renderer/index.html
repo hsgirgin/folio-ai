@@ -107,9 +107,63 @@
     opacity: 0.7;
 }
 
-.note-item.active .delete-btn:hover {
+    .note-item.active .delete-btn:hover {
     color: #b91c1c;
     opacity: 1;
+}
+
+.search-shell {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+#searchInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    outline: none;
+    font-size: 0.85rem;
+}
+
+#searchInput::placeholder {
+    color: var(--text-dim);
+}
+
+.search-clear {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.search-clear:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.notes-empty {
+    display: none;
+    margin-top: 16px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 14px 10px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
 }
   </style>
 </head>
@@ -126,7 +180,12 @@
   <div id="sidebar">
     <div class="sidebar-content">
       <button style="background:var(--accent); color:var(--bg); border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;" onclick="newNote()">+ New Note</button>
+      <div class="search-shell">
+        <input id="searchInput" type="text" placeholder="Search notes..." oninput="updateSearch(this.value)" onkeydown="if(event.key==='Escape'){ event.preventDefault(); clearSearch(); this.blur(); }">
+        <button id="clearSearchBtn" class="search-clear" onclick="clearSearch()" aria-label="Clear search">×</button>
+      </div>
       <div id="notesList" style="margin-top:20px"></div>
+      <div id="notesEmptyState" class="notes-empty">No matching notes</div>
     </div>
   </div>
 

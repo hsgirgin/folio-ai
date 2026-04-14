@@ -5,6 +5,7 @@ let lastRange = null;
 let lastAiResult = "";
 let historyStack = [];
 let currentMode = 'cloud'; 
+let searchQuery = "";
 
 const ollamaUrl = window.folioAPI.ollamaUrl;
 const LOCAL_MODEL = 'llama3.1:8b';
@@ -45,6 +46,24 @@ function renderMarkdownToHtml(text) {
     const source = (text || "").trim();
     if (!source) return "";
     return sanitizeHtml(marked.parse(source));
+}
+
+function getPlainTextFromHtml(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html || "";
+    return template.content.textContent || "";
+}
+
+function normalizeSearchValue(value) {
+    return (value || "").toLowerCase().trim();
+}
+
+function noteMatchesSearch(note, query) {
+    if (!query) return true;
+
+    const title = normalizeSearchValue(note.title);
+    const content = normalizeSearchValue(getPlainTextFromHtml(note.content));
+    return title.includes(query) || content.includes(query);
 }
 
 function insertHtmlAtRange(range, html) {
@@ -158,6 +177,17 @@ window.undo = () => {
 // --- UI & SELECTION ---
 window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('closed');
 window.toggleAI = () => document.getElementById('aiPanel').classList.toggle('closed');
+window.updateSearch = (value) => {
+    searchQuery = normalizeSearchValue(value);
+    renderNotes();
+};
+
+window.clearSearch = () => {
+    const input = document.getElementById('searchInput');
+    searchQuery = "";
+    if (input) input.value = "";
+    renderNotes();
+};
 
 document.addEventListener('mouseup', (e) => {
     const selection = window.getSelection();
@@ -331,10 +361,33 @@ document.getElementById('content').addEventListener('paste', (event) => {
     saveCurrentNote(true);
 });
 
+document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        document.getElementById('searchInput')?.focus();
+        document.getElementById('searchInput')?.select();
+        return;
+    }
+
+    if (event.key === 'Escape' && document.activeElement?.id === 'searchInput') {
+        if (searchQuery || document.getElementById('searchInput')?.value) {
+            event.preventDefault();
+            clearSearch();
+        }
+    }
+});
+
 function renderNotes() {
     const el = document.getElementById('notesList');
+    const emptyState = document.getElementById('notesEmptyState');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const filteredNotes = notes.filter(note => noteMatchesSearch(note, searchQuery));
+
     el.innerHTML = '';
-    notes.forEach(note => {
+    clearBtn.style.display = searchQuery ? 'inline-flex' : 'none';
+    emptyState.style.display = filteredNotes.length === 0 ? 'block' : 'none';
+
+    filteredNotes.forEach(note => {
         const div = document.createElement('div');
         div.className = `note-item ${note.id === currentNoteId ? 'active' : ''}`;
         
