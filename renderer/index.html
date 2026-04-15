@@ -19,9 +19,37 @@
     .editor-container { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
     .toolbar { background: var(--panel); padding: 8px 20px; display: flex; gap: 10px; border-bottom: 1px solid var(--border); align-items: center; }
     .tool-btn { background: transparent; border: 1px solid var(--border); color: white; padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 0.75rem; }
+    .toolbar-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .tool-btn.format-btn { min-width: 34px; padding: 6px 8px; font-weight: 700; }
     
     #title { background: transparent; border: none; font-size: 2rem; color: white; font-weight: 700; padding: 20px 40px 10px 40px; outline: none; }
     #content { flex: 1; padding: 10px 40px; overflow-y: auto; outline: none; line-height: 1.7; font-size: 1.1rem; color: var(--text); }
+    #content h1, #content h2 { line-height: 1.2; margin: 1rem 0 0.5rem; }
+    #content h1 { font-size: 2rem; }
+    #content h2 { font-size: 1.5rem; }
+    #content blockquote {
+      margin: 1rem 0;
+      padding-left: 1rem;
+      border-left: 3px solid var(--accent);
+      color: var(--text-dim);
+    }
+    #content ul, #content ol { padding-left: 1.5rem; }
+    #content ul[data-list="checklist"] {
+      list-style: none;
+      padding-left: 0;
+    }
+    #content ul[data-list="checklist"] li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0.4rem 0;
+    }
+    #content ul[data-list="checklist"] input[type="checkbox"] {
+      margin-top: 0.35rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    #content a { color: var(--accent); }
 
     /* Floating Menu */
     #floatingAI { position: absolute; display: none; background: var(--floating); border: 1px solid var(--accent); border-radius: 8px; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; flex-direction: column; gap: 8px; width: 220px; }
@@ -193,6 +221,18 @@
     <div class="toolbar">
       <button class="tool-btn" onclick="toggleSidebar()">☰</button>
       <button class="tool-btn" onclick="undo()">⟲ Undo</button>
+      <div class="toolbar-group">
+        <button class="tool-btn format-btn" onclick="formatSelection('bold')" title="Bold (Ctrl/Cmd+B)">B</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('italic')" title="Italic (Ctrl/Cmd+I)"><em>I</em></button>
+        <button class="tool-btn format-btn" onclick="formatSelection('h1')" title="Heading 1 (Ctrl/Cmd+Alt+1)">H1</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('h2')" title="Heading 2 (Ctrl/Cmd+Alt+2)">H2</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('bullet')" title="Bullet List (Ctrl/Cmd+Shift+8)">• List</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('number')" title="Numbered List (Ctrl/Cmd+Shift+7)">1. List</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('checklist')" title="Checklist">☐ List</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('quote')" title="Blockquote">❝</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('link')" title="Add Link (Ctrl/Cmd+Shift+K)">Link</button>
+        <button class="tool-btn format-btn" onclick="formatSelection('unlink')" title="Remove Link">Unlink</button>
+      </div>
       <div style="flex:1"></div>
       <button class="tool-btn" style="color:var(--accent)" onclick="toggleAI()">🪄 AI Assistant</button>
     </div>
