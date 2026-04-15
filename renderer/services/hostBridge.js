@@ -15,12 +15,12 @@
         modelPresets: [
           {
             id: 'quick',
-            label: 'Quick',
+            label: 'Quick Local',
             model: 'llama3.1:8b'
           },
           {
             id: 'quality',
-            label: 'Quality',
+            label: 'Quality Cloud',
             model: 'gpt-oss:120b-cloud'
           }
         ]

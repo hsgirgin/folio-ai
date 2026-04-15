@@ -81,6 +81,7 @@ function setAiError(message) {
   const text = document.getElementById('replacementText');
   area.style.display = 'block';
   text.textContent = message;
+  setStatus('');
 }
 
 function insertHtmlAtRange(range, html) {
@@ -508,11 +509,15 @@ function renderAiControls() {
 
   presetSelect.addEventListener('change', (event) => {
     aiProvider.setActivePresetId(event.target.value);
+    const preset = aiProvider.getActivePreset();
+    setStatus(`Selected ${preset.label} (${preset.model})`);
+    window.setTimeout(() => setStatus(''), 1800);
   });
 }
 
 async function ensureAiReady() {
   try {
+    const preset = aiProvider.getActivePreset();
     setStatus('Checking Ollama...');
     const available = await aiProvider.isAvailable();
     if (!available) {
@@ -521,8 +526,8 @@ async function ensureAiReady() {
       return false;
     }
 
+    setStatus(`Loading ${preset.label} (${preset.model}) if needed. First reply can take a while.`);
     await aiProvider.ensureModelReady(setStatus);
-    setStatus('');
     return true;
   } catch (error) {
     setStatus('');
@@ -560,13 +565,18 @@ async function runAiRewrite(action) {
   area.style.display = 'block';
   text.innerHTML = '<em>Thinking...</em>';
   state.lastAiResult = '';
+  const preset = aiProvider.getActivePreset();
+  setStatus(`Generating with ${preset.label} (${preset.model})...`);
 
   try {
     await aiProvider.rewriteSelection(instruction, selectedText, (partial) => {
       state.lastAiResult = partial;
       text.innerHTML = marked.parse(partial);
+      setStatus(`Receiving response from ${preset.label}...`);
     });
+    setStatus('');
   } catch (error) {
+    setStatus('');
     text.textContent = error.message || 'Error calling AI.';
   }
 }
@@ -593,12 +603,17 @@ async function runAiChat() {
   aiBubble.className = 'chat-bubble';
   aiBubble.innerHTML = '<em>Thinking...</em>';
   history.prepend(aiBubble);
+  const preset = aiProvider.getActivePreset();
+  setStatus(`Generating with ${preset.label} (${preset.model})...`);
 
   try {
     await aiProvider.chat(getEditor().innerText, query, (partial) => {
       aiBubble.innerHTML = marked.parse(partial);
+      setStatus(`Receiving response from ${preset.label}...`);
     });
+    setStatus('');
   } catch (error) {
+    setStatus('');
     aiBubble.textContent = error.message || 'AI Offline.';
   }
 }

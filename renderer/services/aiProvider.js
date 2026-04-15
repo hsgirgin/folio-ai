@@ -112,6 +112,10 @@
         return activePresetId;
       },
 
+      getActivePreset() {
+        return getActivePreset();
+      },
+
       setActivePresetId(nextPresetId) {
         activePresetId = nextPresetId;
       },
