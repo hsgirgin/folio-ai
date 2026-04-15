@@ -4,7 +4,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dev": "node scripts/dev.js",
+    "dist": "electron-builder",
+    "test": "node tests/run.js"
   },
   "build": {
     "appId": "com.folio.ai",
@@ -18,6 +20,7 @@
       "target": "AppImage"
     },
     "files": [
+      "lib/**/*",
       "main.js",
       "preload.js",
       "renderer/**/*"
