@@ -14,9 +14,27 @@
     return title.includes(query) || excerpt.includes(query) || searchText.includes(query);
   }
 
+  function noteMatchesSection(note, sectionId) {
+    if (sectionId === 'all') {
+      return true;
+    }
+
+    if (sectionId === null || sectionId === 'unsectioned') {
+      return (note.sectionId || null) === null;
+    }
+
+    return (note.sectionId || null) === sectionId;
+  }
+
+  function noteMatchesFilters(note, query, sectionId) {
+    return noteMatchesSection(note, sectionId) && noteMatchesSearch(note, query);
+  }
+
   const api = {
     normalizeSearchValue,
-    noteMatchesSearch
+    noteMatchesSearch,
+    noteMatchesSection,
+    noteMatchesFilters
   };
 
   globalScope.FolioSearch = api;

@@ -1,25 +1,38 @@
 const { sanitizeHtml, renderMarkdownToHtml } = window.FolioContent;
-const { normalizeSearchValue, noteMatchesSearch } = window.FolioSearch;
+const { normalizeSearchValue, noteMatchesFilters } = window.FolioSearch;
 const { BLOCK_TAGS, normalizeUrl, getMarkdownShortcut } = window.FolioEditorCommands;
 
 const hostBridge = window.FolioHostBridge.createBridge(window.folioAPI);
 const storage = window.FolioStorage.createStorage(hostBridge);
 const aiProvider = window.FolioAI.createAIProvider({ hostBridge });
 
-marked.setOptions({
-  breaks: true,
-  gfm: true
-});
+marked.setOptions({ breaks: true, gfm: true });
 
 const state = {
   notes: [],
+  sections: [],
   currentNoteId: null,
+  currentNote: null,
+  selectedSectionId: 'all',
+  searchQuery: '',
   saveTimeout: null,
   lastRange: null,
   lastAiResult: '',
   historyStack: [],
-  searchQuery: '',
-  deleteResetTimers: new Map()
+  sectionEditor: {
+    mode: 'create',
+    sectionId: null
+  },
+  pendingDelete: {
+    type: null,
+    targetId: null,
+    label: ''
+  },
+  contextMenu: {
+    visible: false,
+    type: null,
+    targetId: null
+  }
 };
 
 function getEditor() {
@@ -70,10 +83,17 @@ function focusEditor() {
   getEditor().focus();
 }
 
-function setStatus(message = '') {
+function setStatus(message = '', isError = false) {
   const overlay = document.getElementById('statusOverlay');
   overlay.textContent = message;
   overlay.style.display = message ? 'block' : 'none';
+  overlay.dataset.variant = isError ? 'error' : 'info';
+}
+
+function showTransientStatus(message, isError = false) {
+  setStatus(message, isError);
+  clearTimeout(state.statusTimer);
+  state.statusTimer = window.setTimeout(() => setStatus(''), isError ? 2600 : 1800);
 }
 
 function setAiError(message) {
@@ -81,7 +101,7 @@ function setAiError(message) {
   const text = document.getElementById('replacementText');
   area.style.display = 'block';
   text.textContent = message;
-  setStatus('');
+  setStatus('', true);
 }
 
 function insertHtmlAtRange(range, html) {
@@ -95,13 +115,11 @@ function insertHtmlAtRange(range, html) {
 
   const selection = window.getSelection();
   const nextRange = document.createRange();
-
   if (lastNode?.parentNode) {
     nextRange.setStartAfter(lastNode);
   } else {
     nextRange.selectNodeContents(getEditor());
   }
-
   nextRange.collapse(true);
   selection.removeAllRanges();
   selection.addRange(nextRange);
@@ -190,7 +208,6 @@ function removeCharactersBeforeCaret(count) {
     if (!currentNode.childNodes.length) {
       return false;
     }
-
     currentNode = currentNode.childNodes[Math.max(0, currentOffset - 1)] || currentNode.childNodes[0];
     while (currentNode && currentNode.nodeType !== Node.TEXT_NODE && currentNode.lastChild) {
       currentNode = currentNode.lastChild;
@@ -248,21 +265,16 @@ function insertChecklist() {
   takeSnapshot();
   const checklist = document.createElement('ul');
   checklist.dataset.list = 'checklist';
-
   const listItem = document.createElement('li');
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.setAttribute('contenteditable', 'false');
   checkbox.tabIndex = 0;
-
   const text = document.createElement('span');
   text.innerHTML = block.innerHTML || '<br>';
-
-  listItem.appendChild(checkbox);
-  listItem.appendChild(text);
+  listItem.append(checkbox, text);
   checklist.appendChild(listItem);
   block.replaceWith(checklist);
-
   setCaretAtStart(text);
   saveCurrentNote(true);
   return true;
@@ -270,22 +282,14 @@ function insertChecklist() {
 
 function applyMarkdownShortcut(shortcut) {
   removeCharactersBeforeCaret(shortcut.triggerLength);
-
   switch (shortcut.kind) {
-    case 'h1':
-      return formatBlock('H1');
-    case 'h2':
-      return formatBlock('H2');
-    case 'ul':
-      return runEditorCommand('insertUnorderedList');
-    case 'ol':
-      return runEditorCommand('insertOrderedList');
-    case 'blockquote':
-      return formatBlock('BLOCKQUOTE');
-    case 'checklist':
-      return insertChecklist();
-    default:
-      return false;
+    case 'h1': return formatBlock('H1');
+    case 'h2': return formatBlock('H2');
+    case 'ul': return runEditorCommand('insertUnorderedList');
+    case 'ol': return runEditorCommand('insertOrderedList');
+    case 'blockquote': return formatBlock('BLOCKQUOTE');
+    case 'checklist': return insertChecklist();
+    default: return false;
   }
 }
 
@@ -322,19 +326,16 @@ function insertLink() {
   if (!range) {
     return false;
   }
-
   const selection = window.getSelection();
   selection.removeAllRanges();
   selection.addRange(range);
   if (!selection.toString().trim()) {
     return false;
   }
-
   const url = normalizeUrl(window.prompt('Enter a URL'));
   if (!url) {
     return false;
   }
-
   return runEditorCommand('createLink', url);
 }
 
@@ -343,52 +344,216 @@ function removeLink() {
   if (!range) {
     return false;
   }
-
   const anchor = findClosestElement(range.startContainer, 'a');
   if (!anchor) {
     return false;
   }
-
   takeSnapshot();
   unwrapElement(anchor);
   saveCurrentNote(true);
   return true;
 }
 
-function renderNotes() {
-  const list = document.getElementById('notesList');
-  const emptyState = document.getElementById('notesEmptyState');
-  const clearButton = document.getElementById('clearSearchBtn');
-  const filteredNotes = state.notes.filter((note) => noteMatchesSearch(note, state.searchQuery));
+function getCurrentSectionLabel() {
+  if (state.selectedSectionId === 'all') {
+    return 'All Pages';
+  }
+  if (state.selectedSectionId === null || state.selectedSectionId === 'unsectioned') {
+    return 'Unsectioned';
+  }
+  return state.sections.find((section) => section.id === state.selectedSectionId)?.name || 'Section';
+}
 
+function getCurrentNoteMetadata() {
+  return state.notes.find((note) => note.id === state.currentNoteId) || null;
+}
+
+function getSectionById(sectionId) {
+  return state.sections.find((section) => section.id === sectionId) || null;
+}
+
+function getNoteById(noteId) {
+  return state.notes.find((note) => note.id === noteId) || null;
+}
+
+function closeContextMenu() {
+  const menu = document.getElementById('itemContextMenu');
+  menu.classList.remove('active');
+  state.contextMenu = {
+    visible: false,
+    type: null,
+    targetId: null
+  };
+}
+
+function clearPendingDelete() {
+  state.pendingDelete = {
+    type: null,
+    targetId: null,
+    label: ''
+  };
+  const banner = document.getElementById('deleteBanner');
+  const text = document.getElementById('deleteBannerText');
+  banner.classList.remove('active');
+  text.textContent = '';
+}
+
+function requestDelete(type, targetId, label) {
+  state.pendingDelete = {
+    type,
+    targetId,
+    label
+  };
+  const banner = document.getElementById('deleteBanner');
+  const text = document.getElementById('deleteBannerText');
+  text.textContent = type === 'section'
+    ? `Delete section "${label}"? Pages will move to Unsectioned.`
+    : `Delete page "${label}"?`;
+  banner.classList.add('active');
+}
+
+function openContextMenu(event, type, targetId) {
+  event.preventDefault();
+  const menu = document.getElementById('itemContextMenu');
+  const renameButton = document.getElementById('contextRenameBtn');
+  const deleteButton = document.getElementById('contextDeleteBtn');
+
+  renameButton.textContent = type === 'section' ? 'Rename Section' : 'Rename Page';
+  deleteButton.textContent = type === 'section' ? 'Delete Section' : 'Delete Page';
+
+  state.contextMenu = {
+    visible: true,
+    type,
+    targetId
+  };
+
+  menu.style.left = `${event.clientX}px`;
+  menu.style.top = `${event.clientY}px`;
+  menu.classList.add('active');
+}
+
+function getFilteredNotes() {
+  return state.notes.filter((note) => noteMatchesFilters(note, state.searchQuery, state.selectedSectionId));
+}
+
+function syncSelectedSection() {
+  if (state.selectedSectionId === 'all' || state.selectedSectionId === null || state.selectedSectionId === 'unsectioned') {
+    return;
+  }
+  if (!state.sections.some((section) => section.id === state.selectedSectionId)) {
+    state.selectedSectionId = 'all';
+  }
+}
+
+async function refreshCollections() {
+  const [notes, sections] = await Promise.all([
+    storage.listNotes(),
+    storage.listSections()
+  ]);
+  state.notes = notes;
+  state.sections = sections;
+  syncSelectedSection();
+  renderSections();
+  renderPages();
+  renderHeaderControls();
+}
+
+function renderSections() {
+  const list = document.getElementById('sectionsList');
   list.innerHTML = '';
-  clearButton.style.display = state.searchQuery ? 'inline-flex' : 'none';
-  emptyState.style.display = filteredNotes.length === 0 ? 'block' : 'none';
+
+  [
+    { id: 'all', name: 'All Pages' },
+    { id: 'unsectioned', name: 'Unsectioned' }
+  ].forEach((section) => {
+    list.appendChild(createSectionItem(section, false));
+  });
+
+  state.sections.forEach((section) => {
+    list.appendChild(createSectionItem(section, true));
+  });
+}
+
+function createSectionItem(section, editable) {
+  const row = document.createElement('div');
+  row.className = 'section-row';
+  if (editable) {
+    row.addEventListener('contextmenu', (event) => openContextMenu(event, 'section', section.id));
+  }
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `section-button ${state.selectedSectionId === section.id ? 'active' : ''}`;
+  button.textContent = section.name;
+  button.addEventListener('click', () => {
+    state.selectedSectionId = section.id;
+    renderSections();
+    renderPages();
+  });
+  row.appendChild(button);
+
+  return row;
+}
+
+function renderPages() {
+  const list = document.getElementById('pagesList');
+  const title = document.getElementById('pagesPaneTitle');
+  const emptyState = document.getElementById('pagesEmptyState');
+  const filteredNotes = getFilteredNotes();
+
+  title.textContent = getCurrentSectionLabel();
+  list.innerHTML = '';
+  emptyState.style.display = filteredNotes.length ? 'none' : 'block';
 
   filteredNotes.forEach((note) => {
     const item = document.createElement('div');
-    item.className = `note-item ${note.id === state.currentNoteId ? 'active' : ''}`;
+    item.className = `page-item ${note.id === state.currentNoteId ? 'active' : ''}`;
     item.addEventListener('click', () => openNote(note.id));
+    item.addEventListener('contextmenu', (event) => openContextMenu(event, 'page', note.id));
 
-    const title = document.createElement('span');
-    title.textContent = note.title || 'Untitled';
+    const textShell = document.createElement('div');
+    textShell.className = 'page-item-body';
 
-    const button = document.createElement('button');
-    button.className = 'delete-btn';
-    button.type = 'button';
-    button.textContent = 'x';
-    button.setAttribute('aria-label', 'Delete note');
-    button.addEventListener('click', (event) => deleteNote(event, note.id));
+    const name = document.createElement('div');
+    name.className = 'page-title';
+    name.textContent = note.title || 'Untitled';
 
-    item.appendChild(title);
-    item.appendChild(button);
+    const excerpt = document.createElement('div');
+    excerpt.className = 'page-excerpt';
+    excerpt.textContent = note.excerpt || 'Empty page';
+
+    textShell.append(name, excerpt);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'delete-btn';
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', (event) => deleteNote(event, note.id));
+
+    item.append(textShell, deleteButton);
     list.appendChild(item);
   });
 }
 
-async function refreshNotes() {
-  state.notes = await storage.listNotes();
-  renderNotes();
+function renderHeaderControls() {
+  const select = document.getElementById('sectionSelect');
+  const current = state.currentNote || getCurrentNoteMetadata();
+  select.innerHTML = '';
+
+  const unsectionedOption = document.createElement('option');
+  unsectionedOption.value = '';
+  unsectionedOption.textContent = 'Unsectioned';
+  select.appendChild(unsectionedOption);
+
+  state.sections.forEach((section) => {
+    const option = document.createElement('option');
+    option.value = section.id;
+    option.textContent = section.name;
+    select.appendChild(option);
+  });
+
+  select.disabled = !current;
+  select.value = current?.sectionId || '';
 }
 
 async function persistCurrentNoteNow() {
@@ -396,12 +561,12 @@ async function persistCurrentNoteNow() {
     return;
   }
 
-  await storage.updateNote(state.currentNoteId, {
+  const updated = await storage.updateNote(state.currentNoteId, {
     title: getTitleInput().value,
     content: getEditor().innerHTML
   });
-
-  await refreshNotes();
+  state.currentNote = updated;
+  await refreshCollections();
 }
 
 async function flushPendingSave() {
@@ -438,63 +603,217 @@ async function openNote(id) {
   }
 
   state.currentNoteId = id;
+  state.currentNote = note;
   getTitleInput().value = note.title || '';
   getEditor().innerHTML = note.content || '';
   document.getElementById('chatHistory').innerHTML = '';
   document.getElementById('replacementArea').style.display = 'none';
   state.historyStack = [note.content || ''];
-  renderNotes();
+  renderPages();
+  renderHeaderControls();
+}
+
+function getNewNoteDefaults() {
+  return {
+    title: '',
+    content: '',
+    sectionId: state.selectedSectionId === 'all' || state.selectedSectionId === 'unsectioned'
+      ? null
+      : state.selectedSectionId
+  };
 }
 
 async function newNote() {
   await flushPendingSave();
-  const note = await storage.createNote({ title: '', content: '' });
-  await refreshNotes();
+  const note = await storage.createNote(getNewNoteDefaults());
+  await refreshCollections();
   await openNote(note.id);
   focusEditor();
 }
 
+function getFallbackNoteId() {
+  return getFilteredNotes()[0]?.id || state.notes[0]?.id || null;
+}
+
 async function deleteNote(event, id) {
   event.stopPropagation();
-  const button = event.currentTarget;
+  closeContextMenu();
+  const note = getNoteById(id);
+  requestDelete('page', id, note?.title || 'Untitled');
+}
 
-  if (!button.classList.contains('confirm-delete')) {
-    button.classList.add('confirm-delete');
-    button.textContent = 'Confirm?';
-
-    const existingTimer = state.deleteResetTimers.get(id);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
+async function createSection() {
+  const input = document.getElementById('sectionNameInput');
+  const label = document.getElementById('sectionCreatorLabel');
+  const name = input.value.trim();
+  if (!name) {
+    showTransientStatus('Section name is required.', true);
+    input.focus();
+    return;
+  }
+  try {
+    let section = null;
+    if (state.sectionEditor.mode === 'rename' && state.sectionEditor.sectionId) {
+      section = await storage.updateSection(state.sectionEditor.sectionId, { name });
+      showTransientStatus('Section renamed');
+    } else {
+      section = await storage.createSection({ name });
+      showTransientStatus(`Created section "${section.name}"`);
     }
+    closeSectionCreator();
+    input.value = '';
+    await refreshCollections();
+    state.selectedSectionId = section.id;
+    renderSections();
+    renderPages();
+    label.textContent = 'Create section';
+  } catch (error) {
+    showTransientStatus(error.message || 'Unable to create section.', true);
+  }
+}
 
-    const timer = window.setTimeout(() => {
-      button.classList.remove('confirm-delete');
-      button.textContent = 'x';
-    }, 3000);
+function openSectionCreator(section = null) {
+  const creator = document.getElementById('sectionCreator');
+  const input = document.getElementById('sectionNameInput');
+  const label = document.getElementById('sectionCreatorLabel');
+  const saveButton = document.getElementById('saveSectionBtn');
 
-    state.deleteResetTimers.set(id, timer);
+  state.sectionEditor = {
+    mode: section ? 'rename' : 'create',
+    sectionId: section?.id || null
+  };
+
+  creator.classList.add('active');
+  input.value = section?.name || '';
+  label.textContent = section ? 'Rename section' : 'Create section';
+  saveButton.textContent = section ? 'Rename' : 'Create';
+  input.focus();
+  input.select();
+}
+
+function closeSectionCreator() {
+  const creator = document.getElementById('sectionCreator');
+  const input = document.getElementById('sectionNameInput');
+  const label = document.getElementById('sectionCreatorLabel');
+  const saveButton = document.getElementById('saveSectionBtn');
+
+  state.sectionEditor = {
+    mode: 'create',
+    sectionId: null
+  };
+
+  creator.classList.remove('active');
+  input.value = '';
+  label.textContent = 'Create section';
+  saveButton.textContent = 'Create';
+}
+
+async function renameSection(section) {
+  openSectionCreator(section);
+}
+
+async function deleteSection(section) {
+  await flushPendingSave();
+  try {
+    await storage.deleteSection(section.id);
+    const currentNoteWasInSection = state.currentNote?.sectionId === section.id;
+    if (state.selectedSectionId === section.id) {
+      state.selectedSectionId = 'all';
+    }
+    await refreshCollections();
+    if (currentNoteWasInSection && state.currentNoteId) {
+      const refreshedCurrentNote = await storage.getNote(state.currentNoteId);
+      if (refreshedCurrentNote) {
+        state.currentNote = refreshedCurrentNote;
+        getTitleInput().value = refreshedCurrentNote.title || '';
+        getEditor().innerHTML = refreshedCurrentNote.content || '';
+        state.historyStack = [refreshedCurrentNote.content || ''];
+      }
+    }
+    renderSections();
+    renderPages();
+    renderHeaderControls();
+    clearPendingDelete();
     focusEditor();
+    showTransientStatus('Section deleted');
+  } catch (error) {
+    showTransientStatus(error.message || 'Unable to delete section.', true);
+  }
+}
+
+async function deleteNoteById(id) {
+  await flushPendingSave();
+  await storage.deleteNote(id);
+  await refreshCollections();
+  clearPendingDelete();
+
+  if (id === state.currentNoteId) {
+    const nextId = getFallbackNoteId();
+    if (nextId) {
+      await openNote(nextId);
+    } else {
+      state.currentNoteId = null;
+      state.currentNote = null;
+      await newNote();
+    }
     return;
   }
 
-  await flushPendingSave();
-  await storage.deleteNote(id);
-  await refreshNotes();
+  renderPages();
+  renderHeaderControls();
+}
 
-  if (id === state.currentNoteId) {
-    if (state.notes[0]) {
-      await openNote(state.notes[0].id);
+async function confirmPendingDelete() {
+  const { type, targetId } = state.pendingDelete;
+  if (!type || !targetId) {
+    return;
+  }
+
+  if (type === 'section') {
+    const section = getSectionById(targetId);
+    if (section) {
+      await deleteSection(section);
     } else {
-      await newNote();
+      clearPendingDelete();
     }
-  } else {
-    focusEditor();
+    return;
+  }
+
+  if (type === 'page') {
+    await deleteNoteById(targetId);
+  }
+}
+
+async function renamePage(pageId) {
+  if (pageId !== state.currentNoteId) {
+    await openNote(pageId);
+  }
+  const titleInput = getTitleInput();
+  titleInput.focus();
+  titleInput.select();
+}
+
+async function moveCurrentNoteToSection(sectionId) {
+  if (!state.currentNoteId) {
+    return;
+  }
+  try {
+    await flushPendingSave();
+    const updated = await storage.updateNote(state.currentNoteId, {
+      sectionId: sectionId || null
+    });
+    state.currentNote = updated;
+    await refreshCollections();
+    renderPages();
+    renderHeaderControls();
+    showTransientStatus('Page moved');
+  } catch (error) {
+    showTransientStatus(error.message || 'Unable to move page.', true);
   }
 }
 
 function renderAiControls() {
   document.getElementById('providerName').textContent = aiProvider.getProviderLabel();
-
   const presetSelect = document.getElementById('modelPreset');
   presetSelect.innerHTML = '';
   aiProvider.getModelPresets().forEach((preset) => {
@@ -506,12 +825,10 @@ function renderAiControls() {
     }
     presetSelect.appendChild(option);
   });
-
   presetSelect.addEventListener('change', (event) => {
     aiProvider.setActivePresetId(event.target.value);
     const preset = aiProvider.getActivePreset();
-    setStatus(`Selected ${preset.label} (${preset.model})`);
-    window.setTimeout(() => setStatus(''), 1800);
+    showTransientStatus(`Selected ${preset.label} (${preset.model})`);
   });
 }
 
@@ -525,7 +842,6 @@ async function ensureAiReady() {
       setAiError('Ollama is offline. Start Ollama to use AI features.');
       return false;
     }
-
     setStatus(`Loading ${preset.label} (${preset.model}) if needed. First reply can take a while.`);
     await aiProvider.ensureModelReady(setStatus);
     return true;
@@ -555,7 +871,6 @@ async function runAiRewrite(action) {
   }
 
   document.getElementById('floatingAI').style.display = 'none';
-
   if (!(await ensureAiReady())) {
     return;
   }
@@ -631,18 +946,17 @@ window.formatSelection = (type) => {
     link: () => insertLink(),
     unlink: () => removeLink()
   };
-
   const action = actions[type];
   if (action) {
     action();
   }
 };
 
-window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('closed');
+window.toggleNavigation = () => document.getElementById('navigationShell').classList.toggle('collapsed');
 window.toggleAI = () => document.getElementById('aiPanel').classList.toggle('closed');
 window.updateSearch = (value) => {
   state.searchQuery = normalizeSearchValue(value);
-  renderNotes();
+  renderPages();
 };
 window.clearSearch = () => {
   const input = document.getElementById('searchInput');
@@ -650,7 +964,7 @@ window.clearSearch = () => {
   if (input) {
     input.value = '';
   }
-  renderNotes();
+  renderPages();
 };
 window.aiContextual = runAiRewrite;
 window.aiChat = runAiChat;
@@ -658,7 +972,6 @@ window.applyReplacement = () => {
   if (!state.lastRange || !state.lastAiResult) {
     return;
   }
-
   takeSnapshot();
   const renderedHtml = renderMarkdownToHtml(state.lastAiResult) || `<p>${state.lastAiResult}</p>`;
   insertHtmlAtRange(state.lastRange, renderedHtml);
@@ -666,9 +979,6 @@ window.applyReplacement = () => {
   saveCurrentNote(true);
 };
 window.newNote = newNote;
-window.openNote = openNote;
-window.saveCurrentNote = saveCurrentNote;
-window.deleteNote = deleteNote;
 window.undo = () => {
   focusEditor();
   const commandWorked = document.execCommand('undo');
@@ -698,6 +1008,15 @@ document.addEventListener('selectionchange', () => {
     captureSelection();
   }
 });
+
+document.addEventListener('click', (event) => {
+  const menu = document.getElementById('itemContextMenu');
+  if (!menu.contains(event.target)) {
+    closeContextMenu();
+  }
+});
+
+document.addEventListener('scroll', closeContextMenu, true);
 
 getEditor().addEventListener('paste', (event) => {
   const clipboard = event.clipboardData;
@@ -796,10 +1115,60 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+document.getElementById('newSectionBtn').addEventListener('click', openSectionCreator);
+document.getElementById('saveSectionBtn').addEventListener('click', createSection);
+document.getElementById('cancelSectionBtn').addEventListener('click', closeSectionCreator);
+document.getElementById('contextRenameBtn').addEventListener('click', async () => {
+  const { type, targetId } = state.contextMenu;
+  closeContextMenu();
+  if (type === 'section') {
+    const section = getSectionById(targetId);
+    if (section) {
+      renameSection(section);
+    }
+    return;
+  }
+  if (type === 'page' && targetId) {
+    await renamePage(targetId);
+  }
+});
+document.getElementById('contextDeleteBtn').addEventListener('click', async () => {
+  const { type, targetId } = state.contextMenu;
+  closeContextMenu();
+  if (type === 'section') {
+    const section = getSectionById(targetId);
+    if (section) {
+      requestDelete('section', section.id, section.name);
+    }
+    return;
+  }
+  if (type === 'page' && targetId) {
+    const note = getNoteById(targetId);
+    if (note) {
+      requestDelete('page', targetId, note.title || 'Untitled');
+    }
+  }
+});
+document.getElementById('confirmDeleteBtn').addEventListener('click', confirmPendingDelete);
+document.getElementById('cancelDeleteBtn').addEventListener('click', clearPendingDelete);
+document.getElementById('sectionNameInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    createSection();
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeSectionCreator();
+  }
+});
+document.getElementById('newPageBtn').addEventListener('click', newNote);
+document.getElementById('sectionSelect').addEventListener('change', (event) => {
+  moveCurrentNoteToSection(event.target.value || null);
+});
+
 async function initialize() {
   renderAiControls();
-  await refreshNotes();
-
+  await refreshCollections();
   if (state.notes[0]) {
     await openNote(state.notes[0].id);
   } else {

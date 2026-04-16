@@ -32,19 +32,19 @@
     if (electronBridge && electronBridge.notes) {
       return {
         config: electronBridge.config || getFallbackConfig(),
-        notes: electronBridge.notes
+        notes: electronBridge.notes,
+        sections: electronBridge.sections
       };
     }
 
     return {
       config: getFallbackConfig(),
-      notes: globalScope.FolioBrowserNotesBridge
+      notes: globalScope.FolioBrowserNotesBridge,
+      sections: globalScope.FolioBrowserNotesBridge
     };
   }
 
-  const api = {
-    createBridge
-  };
+  const api = { createBridge };
 
   globalScope.FolioHostBridge = api;
 

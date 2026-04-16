@@ -6,13 +6,15 @@
       createNote: (payload) => hostBridge.notes.createNote(payload),
       updateNote: (id, updates) => hostBridge.notes.updateNote(id, updates),
       deleteNote: (id) => hostBridge.notes.deleteNote(id),
-      exportNotes: () => hostBridge.notes.exportNotes()
+      exportNotes: () => hostBridge.notes.exportNotes(),
+      listSections: () => hostBridge.sections.listSections(),
+      createSection: (payload) => hostBridge.sections.createSection(payload),
+      updateSection: (id, updates) => hostBridge.sections.updateSection(id, updates),
+      deleteSection: (id) => hostBridge.sections.deleteSection(id)
     };
   }
 
-  const api = {
-    createStorage
-  };
+  const api = { createStorage };
 
   globalScope.FolioStorage = api;
 

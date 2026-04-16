@@ -3,33 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Folio AI | Pro Workspace</title>
+  <title>Folio AI | Sections</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
       --bg: #0f172a;
-      --panel: #1e293b;
+      --panel: #162033;
+      --panel-2: #1e293b;
       --accent: #38bdf8;
-      --pinned: #fbce44;
-      --text: #f1f5f9;
+      --accent-soft: rgba(56, 189, 248, 0.14);
+      --text: #e2e8f0;
       --text-dim: #94a3b8;
       --border: #334155;
-      --floating: #1e293b;
       --danger: #ef4444;
       --success: #10b981;
     }
 
-    body { background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-    #sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s ease; }
-    #sidebar.closed { margin-left: -280px; }
-    .sidebar-content { padding: 20px; flex: 1; overflow-y: auto; }
-    .editor-container { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; }
-    .toolbar { background: var(--panel); padding: 8px 20px; display: flex; gap: 10px; border-bottom: 1px solid var(--border); align-items: center; }
-    .tool-btn { background: transparent; border: 1px solid var(--border); color: white; padding: 6px 9px; cursor: pointer; border-radius: 4px; font-size: 0.75rem; }
-    .toolbar-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+    button, input, select { font: inherit; }
+    .tool-btn, .section-action-btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
+    .tool-btn:hover, .section-action-btn:hover, .section-button:hover, .page-item:hover { border-color: var(--accent); color: white; }
+    .tool-btn.primary { background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 700; }
     .tool-btn.format-btn { min-width: 34px; padding: 6px 8px; font-weight: 700; }
-    #title { background: transparent; border: none; font-size: 2rem; color: white; font-weight: 700; padding: 20px 40px 10px 40px; outline: none; }
-    #content { flex: 1; padding: 10px 40px; overflow-y: auto; outline: none; line-height: 1.7; font-size: 1.1rem; color: var(--text); }
+    #navigationShell { width: 420px; min-width: 420px; display: flex; border-right: 1px solid var(--border); background: var(--panel); transition: margin-left 0.25s ease; }
+    #navigationShell.collapsed { margin-left: -420px; }
+    .sections-pane { width: 170px; border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #182338 0%, #131c2d 100%); }
+    .sections-list, .pages-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
+    .pane-title { font-size: 0.76rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin: 0; }
+    .section-creator { display: none; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: rgba(15, 23, 42, 0.45); }
+    .section-creator.active { display: flex; }
+    .section-creator-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .section-creator input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); outline: none; border-radius: 8px; padding: 8px 10px; }
+    .section-creator-actions { display: flex; gap: 8px; }
+    .section-row { display: flex; flex-direction: column; gap: 6px; }
+    .section-button { width: 100%; text-align: left; border: 1px solid transparent; background: transparent; color: var(--text-dim); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+    .section-button.active { background: var(--accent-soft); color: white; border-color: rgba(56, 189, 248, 0.25); }
+    .pages-pane { flex: 1; display: flex; flex-direction: column; padding: 16px 14px; gap: 12px; min-width: 0; }
+    .pages-pane-header, .toolbar, .floating-row, .provider-shell, .editor-meta-row { display: flex; align-items: center; gap: 8px; }
+    .pages-pane-header { justify-content: space-between; }
+    .search-shell, .section-select-shell { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+    .search-shell input, .section-select-shell select { width: 100%; background: transparent; border: none; color: var(--text); outline: none; }
+    .page-item { display: flex; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid transparent; background: rgba(15, 23, 42, 0.45); cursor: pointer; }
+    .page-item.active { border-color: rgba(56, 189, 248, 0.28); background: rgba(56, 189, 248, 0.08); }
+    .page-item-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .page-title { font-weight: 600; }
+    .page-excerpt { color: var(--text-dim); font-size: 0.86rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .delete-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; height: fit-content; padding: 6px 8px; cursor: pointer; }
+    .pages-empty { display: none; color: var(--text-dim); font-size: 0.86rem; text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 12px; }
+    .editor-container { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .toolbar { padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .toolbar-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .delete-banner { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; background: rgba(239, 68, 68, 0.12); border-bottom: 1px solid rgba(239, 68, 68, 0.3); }
+    .delete-banner.active { display: flex; }
+    .delete-banner-text { color: #fecaca; font-size: 0.9rem; }
+    .delete-banner-actions { display: flex; gap: 8px; }
+    .tool-btn.danger { background: var(--danger); border-color: transparent; color: white; }
+    .workspace-header { padding: 12px 18px 0; border-bottom: 1px solid var(--border); }
+    #title { width: 100%; background: transparent; border: none; color: white; font-size: 2rem; font-weight: 700; padding: 6px 0 10px; outline: none; }
+    .editor-meta-row { padding-bottom: 12px; flex-wrap: wrap; }
+    .editor-meta-label { font-size: 0.76rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    #content { flex: 1; padding: 18px 40px 40px; overflow-y: auto; outline: none; line-height: 1.7; font-size: 1.06rem; }
     #content h1, #content h2 { line-height: 1.2; margin: 1rem 0 0.5rem; }
     #content h1 { font-size: 2rem; }
     #content h2 { font-size: 1.5rem; }
@@ -39,51 +73,30 @@
     #content ul[data-list="checklist"] li { display: flex; align-items: flex-start; gap: 10px; margin: 0.4rem 0; }
     #content ul[data-list="checklist"] input[type="checkbox"] { margin-top: 0.35rem; accent-color: var(--accent); cursor: pointer; }
     #content a { color: var(--accent); }
-
-    #floatingAI { position: absolute; display: none; background: var(--floating); border: 1px solid var(--accent); border-radius: 8px; padding: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5); z-index: 100; flex-direction: column; gap: 8px; width: 220px; }
-    .floating-row { display: flex; gap: 4px; }
-    #floatingAI button { background: #2d3748; border: none; color: white; padding: 6px; cursor: pointer; font-size: 0.7rem; border-radius: 4px; flex: 1; }
-    #customPrompt { background: #0f172a; border: 1px solid var(--border); color: white; padding: 6px; border-radius: 4px; font-size: 0.75rem; outline: none; }
-
-    #aiPanel { width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; }
+    #statusOverlay { display: none; padding: 10px 18px; background: #0ea5e9; color: white; font-size: 0.78rem; font-weight: 700; }
+    #statusOverlay[data-variant="error"] { background: #b91c1c; }
+    #floatingAI { position: absolute; display: none; background: var(--panel-2); border: 1px solid var(--accent); border-radius: 10px; padding: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45); z-index: 100; flex-direction: column; gap: 8px; width: 220px; }
+    #floatingAI button { background: #2d3748; border: none; color: white; padding: 6px; cursor: pointer; font-size: 0.75rem; border-radius: 6px; flex: 1; }
+    #customPrompt, #sidebarChatInput { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px; border-radius: 8px; outline: none; }
+    #aiPanel { width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: width 0.3s ease, opacity 0.3s ease; }
     #aiPanel.closed { width: 0; opacity: 0; border: none; pointer-events: none; }
-    .ai-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .provider-shell { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .provider-badge { padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); font-size: 0.7rem; color: var(--pinned); }
-    .preset-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; font-size: 0.75rem; }
-
-    #statusOverlay { display: none; padding: 10px 20px; background: #0ea5e9; color: white; font-size: 0.7rem; font-weight: bold; }
-    #aiScrollArea { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-    .chat-bubble { background: var(--bg); padding: 12px; border-radius: 8px; font-size: 0.85rem; border: 1px solid var(--border); }
+    .ai-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .provider-badge { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 0.72rem; color: #fcd34d; }
+    .preset-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+    #aiScrollArea { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 15px; }
+    .chat-bubble { background: var(--bg); padding: 12px; border-radius: 10px; font-size: 0.88rem; border: 1px solid var(--border); }
     .user-msg { border-left: 3px solid var(--accent); }
-
-    .replacement-zone { background: rgba(56, 189, 248, 0.05); border: 1px dashed var(--accent); padding: 12px; border-radius: 8px; display: none; }
-    #applyBtn { background: var(--success); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; font-size: 0.75rem; }
-
+    .replacement-zone { background: rgba(56, 189, 248, 0.05); border: 1px dashed var(--accent); padding: 12px; border-radius: 10px; display: none; }
+    #applyBtn { background: var(--success); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700; width: 100%; margin-top: 10px; }
     .chat-input-container { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); }
-    #sidebarChatInput { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px; border-radius: 6px; outline: none; box-sizing: border-box; }
-
-    .note-item { display: flex; justify-content: space-between; align-items: center; position: relative; padding: 10px; margin-bottom: 5px; cursor: pointer; border-radius: 6px; transition: 0.2s; font-size: 0.9rem; color: var(--text-dim); }
-    .note-item.active { background: var(--accent); color: var(--bg); font-weight: bold; }
-    .delete-btn { background: transparent; border: none; color: var(--text-dim); font-size: 0.9rem; cursor: pointer; padding: 0 5px; opacity: 0; transition: 0.2s; }
-    .note-item:hover .delete-btn { opacity: 1; }
-    .delete-btn:hover { color: var(--danger); }
-    .delete-btn.confirm-delete { background: var(--danger); color: white !important; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; opacity: 1; animation: pulse 1s infinite; }
-    .note-item.active .delete-btn { color: var(--bg); opacity: 0.7; }
-    .note-item.active .delete-btn:hover { color: #7f1d1d; opacity: 1; }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-
-    .search-shell { margin-top: 16px; display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
-    #searchInput { flex: 1; background: transparent; border: none; color: var(--text); outline: none; font-size: 0.85rem; }
-    #searchInput::placeholder { color: var(--text-dim); }
-    .search-clear { display: none; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 999px; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 0.95rem; }
-    .search-clear:hover { background: var(--border); color: var(--text); }
-    .notes-empty { display: none; margin-top: 16px; color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 14px 10px; border: 1px dashed var(--border); border-radius: 8px; }
+    .context-menu { position: fixed; z-index: 200; display: none; min-width: 180px; background: #111827; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); padding: 6px; }
+    .context-menu.active { display: block; }
+    .context-menu button { width: 100%; text-align: left; background: transparent; border: none; color: var(--text); padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+    .context-menu button:hover { background: var(--accent-soft); color: white; }
+    .context-menu button.danger { color: #fda4af; }
+    .context-menu hr { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+    @media (max-width: 1180px) { #navigationShell { width: 360px; min-width: 360px; } .sections-pane { width: 150px; } }
+    @media (max-width: 900px) { #aiPanel { display: none; } #navigationShell { width: 320px; min-width: 320px; } #content { padding: 18px 22px 30px; } }
   </style>
 </head>
 <body>
@@ -95,21 +108,40 @@
     <input type="text" id="customPrompt" placeholder="Replacement instruction..." onkeydown="if(event.key==='Enter') aiContextual('custom')">
   </div>
 
-  <div id="sidebar">
-    <div class="sidebar-content">
-      <button style="background:var(--accent); color:var(--bg); border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;" onclick="newNote()">+ New Note</button>
-      <div class="search-shell">
-        <input id="searchInput" type="text" placeholder="Search notes..." oninput="updateSearch(this.value)" onkeydown="if(event.key==='Escape'){ event.preventDefault(); clearSearch(); this.blur(); }">
-        <button id="clearSearchBtn" class="search-clear" onclick="clearSearch()" aria-label="Clear search">x</button>
+  <div id="navigationShell">
+    <aside class="sections-pane">
+      <div class="pages-pane-header">
+        <strong>Sections</strong>
       </div>
-      <div id="notesList" style="margin-top:20px"></div>
-      <div id="notesEmptyState" class="notes-empty">No matching notes</div>
-    </div>
+      <button id="newSectionBtn" class="tool-btn primary" type="button">+ New Section</button>
+      <div id="sectionCreator" class="section-creator">
+        <span id="sectionCreatorLabel" class="section-creator-label">Create section</span>
+        <input id="sectionNameInput" type="text" placeholder="Section name">
+        <div class="section-creator-actions">
+          <button id="saveSectionBtn" class="tool-btn primary" type="button">Save</button>
+          <button id="cancelSectionBtn" class="tool-btn" type="button">Cancel</button>
+        </div>
+      </div>
+      <div id="sectionsList" class="sections-list"></div>
+    </aside>
+
+    <section class="pages-pane">
+      <div class="pages-pane-header">
+        <strong id="pagesPaneTitle">All Pages</strong>
+        <button id="newPageBtn" class="tool-btn primary" type="button">+ New Page</button>
+      </div>
+      <div class="search-shell">
+        <input id="searchInput" type="text" placeholder="Search pages..." oninput="updateSearch(this.value)" onkeydown="if(event.key==='Escape'){ event.preventDefault(); clearSearch(); this.blur(); }">
+        <button class="tool-btn" type="button" onclick="clearSearch()">Clear</button>
+      </div>
+      <div id="pagesList" class="pages-list"></div>
+      <div id="pagesEmptyState" class="pages-empty">No pages match this view.</div>
+    </section>
   </div>
 
   <div class="editor-container">
     <div class="toolbar">
-      <button class="tool-btn" onclick="toggleSidebar()">Menu</button>
+      <button class="tool-btn" onclick="toggleNavigation()">Sections</button>
       <button class="tool-btn" onclick="undo()">Undo</button>
       <div class="toolbar-group">
         <button class="tool-btn format-btn" onclick="formatSelection('bold')" title="Bold (Ctrl/Cmd+B)">B</button>
@@ -126,7 +158,25 @@
       <div style="flex:1"></div>
       <button class="tool-btn" style="color:var(--accent)" onclick="toggleAI()">AI Assistant</button>
     </div>
-    <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
+
+    <div id="deleteBanner" class="delete-banner">
+      <div id="deleteBannerText" class="delete-banner-text"></div>
+      <div class="delete-banner-actions">
+        <button id="confirmDeleteBtn" class="tool-btn danger" type="button">Delete</button>
+        <button id="cancelDeleteBtn" class="tool-btn" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <div class="workspace-header">
+      <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
+      <div class="editor-meta-row">
+        <span class="editor-meta-label">Section</span>
+        <div class="section-select-shell" style="min-width:220px;">
+          <select id="sectionSelect"></select>
+        </div>
+      </div>
+    </div>
+
     <div id="content" contenteditable="true" oninput="saveCurrentNote()"></div>
   </div>
 
@@ -134,11 +184,11 @@
     <div id="statusOverlay"></div>
     <div class="ai-header">
       <div class="provider-shell">
-        <span style="font-size:0.75rem; font-weight:bold; color:var(--accent)">AI</span>
+        <span style="font-size:0.76rem; font-weight:700; color:var(--accent)">AI</span>
         <span id="providerName" class="provider-badge">Local Ollama</span>
         <select id="modelPreset" class="preset-select" aria-label="Model preset"></select>
       </div>
-      <button onclick="toggleAI()" style="background:none; border:none; color:white; cursor:pointer">Close</button>
+      <button class="tool-btn" type="button" onclick="toggleAI()">Close</button>
     </div>
 
     <div id="aiScrollArea">
@@ -150,8 +200,13 @@
     </div>
 
     <div class="chat-input-container">
-      <input type="text" id="sidebarChatInput" placeholder="Ask about the current note..." onkeydown="if(event.key==='Enter') aiChat()">
+      <input type="text" id="sidebarChatInput" placeholder="Ask about the current page..." onkeydown="if(event.key==='Enter') aiChat()">
     </div>
+  </div>
+
+  <div id="itemContextMenu" class="context-menu">
+    <button id="contextRenameBtn" type="button">Rename</button>
+    <button id="contextDeleteBtn" class="danger" type="button">Delete</button>
   </div>
 
   <script src="core/content.js"></script>

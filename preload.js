@@ -34,5 +34,11 @@ contextBridge.exposeInMainWorld('folioAPI', {
     updateNote: (id, updates) => ipcRenderer.invoke('notes:update', id, updates),
     deleteNote: (id) => ipcRenderer.invoke('notes:delete', id),
     exportNotes: () => ipcRenderer.invoke('notes:export')
+  },
+  sections: {
+    listSections: () => ipcRenderer.invoke('sections:list'),
+    createSection: (payload) => ipcRenderer.invoke('sections:create', payload),
+    updateSection: (id, updates) => ipcRenderer.invoke('sections:update', id, updates),
+    deleteSection: (id) => ipcRenderer.invoke('sections:delete', id)
   }
 });

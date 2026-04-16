@@ -29,6 +29,10 @@ function registerNoteHandlers() {
   ipcMain.handle('notes:update', (_event, id, updates) => noteRepository.updateNote(id, updates));
   ipcMain.handle('notes:delete', (_event, id) => noteRepository.deleteNote(id));
   ipcMain.handle('notes:export', () => noteRepository.exportNotes());
+  ipcMain.handle('sections:list', () => noteRepository.listSections());
+  ipcMain.handle('sections:create', (_event, payload) => noteRepository.createSection(payload));
+  ipcMain.handle('sections:update', (_event, id, updates) => noteRepository.updateSection(id, updates));
+  ipcMain.handle('sections:delete', (_event, id) => noteRepository.deleteSection(id));
 }
 
 app.whenReady().then(async () => {
