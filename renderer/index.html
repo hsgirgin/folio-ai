@@ -7,206 +7,1129 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #162033;
-      --panel-2: #1e293b;
-      --accent: #38bdf8;
-      --accent-soft: rgba(56, 189, 248, 0.14);
-      --text: #e2e8f0;
-      --text-dim: #94a3b8;
-      --border: #334155;
-      --danger: #ef4444;
-      --success: #10b981;
+      color-scheme: dark light;
+      --font-ui: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+      --font-editor: "Charter", "Iowan Old Style", "Palatino Linotype", serif;
+      --bg-app: #0a0d12;
+      --bg-muted: #11161d;
+      --bg-panel: rgba(16, 21, 28, 0.84);
+      --bg-panel-strong: rgba(20, 26, 35, 0.94);
+      --bg-elevated: rgba(27, 34, 45, 0.96);
+      --bg-input: rgba(255, 255, 255, 0.04);
+      --bg-hover: rgba(255, 255, 255, 0.06);
+      --bg-selected: rgba(135, 194, 255, 0.13);
+      --text-strong: #f4f7fb;
+      --text-main: #d5dce7;
+      --text-muted: #8f9aaa;
+      --text-soft: #6f7b8c;
+      --border-soft: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --accent: #8fc0ff;
+      --accent-strong: #b9d7ff;
+      --danger: #ff6e7c;
+      --danger-soft: rgba(255, 110, 124, 0.14);
+      --success: #6fdfb0;
+      --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.30);
+      --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.18);
+      --radius-xl: 18px;
+      --radius-lg: 14px;
+      --radius-md: 11px;
+      --sidebar-width: 286px;
+      --sidebar-sections-width: 98px;
     }
 
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
-    button, input, select { font: inherit; }
-    .tool-btn, .section-action-btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; }
-    .tool-btn:hover, .section-action-btn:hover, .section-button:hover, .page-item:hover { border-color: var(--accent); color: white; }
-    .tool-btn.primary { background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 700; }
-    .tool-btn.format-btn { min-width: 34px; padding: 6px 8px; font-weight: 700; }
-    #navigationShell { width: 420px; min-width: 420px; display: flex; border-right: 1px solid var(--border); background: var(--panel); transition: margin-left 0.25s ease; }
-    #navigationShell.collapsed { margin-left: -420px; }
-    .sections-pane { width: 170px; border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; background: linear-gradient(180deg, #182338 0%, #131c2d 100%); }
-    .sections-list, .pages-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
-    .pane-title { font-size: 0.76rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin: 0; }
-    .section-creator { display: none; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: rgba(15, 23, 42, 0.45); }
-    .section-creator.active { display: flex; }
-    .section-creator-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
-    .section-creator input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); outline: none; border-radius: 8px; padding: 8px 10px; }
-    .section-creator-actions { display: flex; gap: 8px; }
-    .section-row { display: flex; flex-direction: column; gap: 6px; }
-    .section-button { width: 100%; text-align: left; border: 1px solid transparent; background: transparent; color: var(--text-dim); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
-    .section-button.active { background: var(--accent-soft); color: white; border-color: rgba(56, 189, 248, 0.25); }
-    .pages-pane { flex: 1; display: flex; flex-direction: column; padding: 16px 14px; gap: 12px; min-width: 0; }
-    .pages-pane-header, .toolbar, .floating-row, .provider-shell, .editor-meta-row { display: flex; align-items: center; gap: 8px; }
-    .pages-pane-header { justify-content: space-between; }
-    .search-shell, .section-select-shell { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
-    .search-shell input, .section-select-shell select { width: 100%; background: transparent; border: none; color: var(--text); outline: none; }
-    .page-item { display: flex; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid transparent; background: rgba(15, 23, 42, 0.45); cursor: pointer; }
-    .page-item.active { border-color: rgba(56, 189, 248, 0.28); background: rgba(56, 189, 248, 0.08); }
-    .page-item-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-    .page-title { font-weight: 600; }
-    .page-excerpt { color: var(--text-dim); font-size: 0.86rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .delete-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; height: fit-content; padding: 6px 8px; cursor: pointer; }
-    .pages-empty { display: none; color: var(--text-dim); font-size: 0.86rem; text-align: center; padding: 16px; border: 1px dashed var(--border); border-radius: 12px; }
-    .editor-container { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .toolbar { padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-    .toolbar-group { display: flex; gap: 6px; flex-wrap: wrap; }
-    .delete-banner { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; background: rgba(239, 68, 68, 0.12); border-bottom: 1px solid rgba(239, 68, 68, 0.3); }
-    .delete-banner.active { display: flex; }
-    .delete-banner-text { color: #fecaca; font-size: 0.9rem; }
-    .delete-banner-actions { display: flex; gap: 8px; }
-    .tool-btn.danger { background: var(--danger); border-color: transparent; color: white; }
-    .workspace-header { padding: 12px 18px 0; border-bottom: 1px solid var(--border); }
-    #title { width: 100%; background: transparent; border: none; color: white; font-size: 2rem; font-weight: 700; padding: 6px 0 10px; outline: none; }
-    .editor-meta-row { padding-bottom: 12px; flex-wrap: wrap; }
-    .editor-meta-label { font-size: 0.76rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
-    #content { flex: 1; padding: 18px 40px 40px; overflow-y: auto; outline: none; line-height: 1.7; font-size: 1.06rem; }
-    #content h1, #content h2 { line-height: 1.2; margin: 1rem 0 0.5rem; }
-    #content h1 { font-size: 2rem; }
-    #content h2 { font-size: 1.5rem; }
-    #content blockquote { margin: 1rem 0; padding-left: 1rem; border-left: 3px solid var(--accent); color: var(--text-dim); }
-    #content ul, #content ol { padding-left: 1.5rem; }
-    #content ul[data-list="checklist"] { list-style: none; padding-left: 0; }
-    #content ul[data-list="checklist"] li { display: flex; align-items: flex-start; gap: 10px; margin: 0.4rem 0; }
-    #content ul[data-list="checklist"] input[type="checkbox"] { margin-top: 0.35rem; accent-color: var(--accent); cursor: pointer; }
-    #content a { color: var(--accent); }
-    #statusOverlay { display: none; padding: 10px 18px; background: #0ea5e9; color: white; font-size: 0.78rem; font-weight: 700; }
-    #statusOverlay[data-variant="error"] { background: #b91c1c; }
-    #floatingAI { position: absolute; display: none; background: var(--panel-2); border: 1px solid var(--accent); border-radius: 10px; padding: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45); z-index: 100; flex-direction: column; gap: 8px; width: 220px; }
-    #floatingAI button { background: #2d3748; border: none; color: white; padding: 6px; cursor: pointer; font-size: 0.75rem; border-radius: 6px; flex: 1; }
-    #customPrompt, #sidebarChatInput { width: 100%; background: var(--bg); border: 1px solid var(--border); color: white; padding: 10px; border-radius: 8px; outline: none; }
-    #aiPanel { width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: width 0.3s ease, opacity 0.3s ease; }
-    #aiPanel.closed { width: 0; opacity: 0; border: none; pointer-events: none; }
-    .ai-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-    .provider-badge { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 0.72rem; color: #fcd34d; }
-    .preset-select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
-    #aiScrollArea { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 15px; }
-    .chat-bubble { background: var(--bg); padding: 12px; border-radius: 10px; font-size: 0.88rem; border: 1px solid var(--border); }
-    .user-msg { border-left: 3px solid var(--accent); }
-    .replacement-zone { background: rgba(56, 189, 248, 0.05); border: 1px dashed var(--accent); padding: 12px; border-radius: 10px; display: none; }
-    #applyBtn { background: var(--success); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700; width: 100%; margin-top: 10px; }
-    .chat-input-container { padding: 15px; border-top: 1px solid var(--border); background: var(--panel); }
-    .context-menu { position: fixed; z-index: 200; display: none; min-width: 180px; background: #111827; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); padding: 6px; }
-    .context-menu.active { display: block; }
-    .context-menu button { width: 100%; text-align: left; background: transparent; border: none; color: var(--text); padding: 10px 12px; border-radius: 8px; cursor: pointer; }
-    .context-menu button:hover { background: var(--accent-soft); color: white; }
-    .context-menu button.danger { color: #fda4af; }
-    .context-menu hr { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
-    @media (max-width: 1180px) { #navigationShell { width: 360px; min-width: 360px; } .sections-pane { width: 150px; } }
-    @media (max-width: 900px) { #aiPanel { display: none; } #navigationShell { width: 320px; min-width: 320px; } #content { padding: 18px 22px 30px; } }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-app: #f3efe8;
+        --bg-muted: #ece6dd;
+        --bg-panel: rgba(255, 252, 247, 0.88);
+        --bg-panel-strong: rgba(255, 251, 246, 0.96);
+        --bg-elevated: rgba(255, 255, 255, 0.98);
+        --bg-input: rgba(93, 76, 51, 0.05);
+        --bg-hover: rgba(89, 72, 51, 0.08);
+        --bg-selected: rgba(64, 111, 180, 0.13);
+        --text-strong: #1d242d;
+        --text-main: #33404f;
+        --text-muted: #6d7987;
+        --text-soft: #8792a0;
+        --border-soft: rgba(63, 72, 90, 0.10);
+        --border-strong: rgba(63, 72, 90, 0.18);
+        --accent: #3768a8;
+        --accent-strong: #264f84;
+        --danger: #b94d5e;
+        --danger-soft: rgba(185, 77, 94, 0.10);
+        --success: #2d8d67;
+        --shadow-lg: 0 18px 48px rgba(52, 45, 34, 0.10);
+        --shadow-md: 0 12px 30px rgba(52, 45, 34, 0.06);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg-app: #0a0d12;
+      --bg-muted: #11161d;
+      --bg-panel: rgba(16, 21, 28, 0.84);
+      --bg-panel-strong: rgba(20, 26, 35, 0.94);
+      --bg-elevated: rgba(27, 34, 45, 0.96);
+      --bg-input: rgba(255, 255, 255, 0.04);
+      --bg-hover: rgba(255, 255, 255, 0.06);
+      --bg-selected: rgba(135, 194, 255, 0.13);
+      --text-strong: #f4f7fb;
+      --text-main: #d5dce7;
+      --text-muted: #8f9aaa;
+      --text-soft: #6f7b8c;
+      --border-soft: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --accent: #8fc0ff;
+      --accent-strong: #b9d7ff;
+      --danger: #ff6e7c;
+      --danger-soft: rgba(255, 110, 124, 0.14);
+      --success: #6fdfb0;
+      --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.30);
+      --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    :root[data-theme="light"] {
+      --bg-app: #f3efe8;
+      --bg-muted: #ece6dd;
+      --bg-panel: rgba(255, 252, 247, 0.88);
+      --bg-panel-strong: rgba(255, 251, 246, 0.96);
+      --bg-elevated: rgba(255, 255, 255, 0.98);
+      --bg-input: rgba(93, 76, 51, 0.05);
+      --bg-hover: rgba(89, 72, 51, 0.08);
+      --bg-selected: rgba(64, 111, 180, 0.13);
+      --text-strong: #1d242d;
+      --text-main: #33404f;
+      --text-muted: #6d7987;
+      --text-soft: #8792a0;
+      --border-soft: rgba(63, 72, 90, 0.10);
+      --border-strong: rgba(63, 72, 90, 0.18);
+      --accent: #3768a8;
+      --accent-strong: #264f84;
+      --danger: #b94d5e;
+      --danger-soft: rgba(185, 77, 94, 0.10);
+      --success: #2d8d67;
+      --shadow-lg: 0 18px 48px rgba(52, 45, 34, 0.10);
+      --shadow-md: 0 12px 30px rgba(52, 45, 34, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(143, 192, 255, 0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(111, 223, 176, 0.06), transparent 24%),
+        var(--bg-app);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app-shell {
+      position: relative;
+      display: flex;
+      height: 100vh;
+      width: 100%;
+      padding: 8px;
+      gap: 8px;
+    }
+
+    #navigationShell {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      display: grid;
+      grid-template-columns: var(--sidebar-sections-width) minmax(0, 1fr);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      transition: width 0.25s ease, min-width 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    #navigationShell.collapsed {
+      width: 0;
+      min-width: 0;
+      opacity: 0;
+      transform: translateX(-16px);
+      border-width: 0;
+      overflow: hidden;
+    }
+
+    .sections-pane {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 100%);
+      border-right: 1px solid var(--border-soft);
+      min-width: 0;
+    }
+
+    .sections-pane-top,
+    .pages-pane-top {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sections-pane-title,
+    .pages-pane-heading,
+    .editor-label,
+    .ai-label {
+      margin: 0;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-strong);
+    }
+
+    .sidebar-brand strong {
+      font-size: 0.84rem;
+      letter-spacing: 0.01em;
+    }
+
+    .sections-list,
+    .pages-list {
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 2px;
+    }
+
+    .section-creator {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 2px;
+      padding: 9px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+    }
+
+    .section-creator.active {
+      display: flex;
+    }
+
+    .section-creator-label {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .section-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .section-button,
+    .page-item,
+    .tool-btn,
+    .section-action-btn {
+      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+
+    .section-button {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.84rem;
+      line-height: 1.15;
+    }
+
+    .section-button:hover,
+    .page-item:hover,
+    .tool-btn:hover,
+    .section-action-btn:hover,
+    .delete-btn:hover,
+    .context-menu button:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-strong);
+      color: var(--text-strong);
+    }
+
+    .section-button.active {
+      background: var(--bg-selected);
+      border-color: rgba(143, 192, 255, 0.18);
+      color: var(--text-strong);
+    }
+
+    .pages-pane {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 100%);
+    }
+
+    .pages-pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .pages-pane-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    #pagesPaneTitle {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 0.9rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .search-shell,
+    .section-select-shell,
+    .toolbar-cluster,
+    .title-row,
+    .topbar,
+    .topbar-group,
+    .floating-row,
+    .provider-shell,
+    .ai-composer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .search-shell,
+    .section-select-shell,
+    .toolbar-cluster,
+    .ai-composer {
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .search-shell input,
+    .section-select-shell select,
+    #customPrompt,
+    #sidebarChatInput,
+    .section-creator input {
+      width: 100%;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-input);
+      color: var(--text-main);
+      outline: none;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .search-shell {
+      padding: 4px 4px 4px 10px;
+      border-radius: 12px;
+    }
+
+    .search-shell input,
+    .section-select-shell select {
+      border: none;
+      background: transparent;
+      padding: 4px 2px;
+    }
+
+    .pages-list {
+      gap: 3px;
+    }
+
+    .page-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 8px 8px 10px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .page-item.active {
+      background: var(--bg-selected);
+      border-color: rgba(143, 192, 255, 0.18);
+    }
+
+    .page-item-body {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .page-title {
+      color: var(--text-strong);
+      font-weight: 600;
+      line-height: 1.2;
+      font-size: 0.84rem;
+    }
+
+    .page-excerpt {
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      line-height: 1.28;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .delete-btn,
+    .tool-btn,
+    .section-action-btn {
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      border-radius: 9px;
+      cursor: pointer;
+      padding: 6px 9px;
+      color: var(--text-main);
+      min-height: 28px;
+      font-size: 0.78rem;
+    }
+
+    .tool-btn.primary {
+      background: var(--text-strong);
+      color: var(--bg-app);
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    .tool-btn.icon-btn {
+      width: 28px;
+      min-width: 28px;
+      padding: 0;
+      justify-content: center;
+    }
+
+    .tool-btn.subtle-btn {
+      border-color: transparent;
+      background: transparent;
+      color: var(--text-muted);
+    }
+
+    .tool-btn.danger {
+      background: var(--danger);
+      color: white;
+      border-color: transparent;
+    }
+
+    .delete-btn {
+      padding: 5px 8px;
+      color: var(--text-soft);
+      background: transparent;
+    }
+
+    .tool-btn.format-btn {
+      min-width: 28px;
+      min-height: 28px;
+      padding: 0 8px;
+      font-weight: 700;
+    }
+
+    .pages-empty {
+      display: none;
+      margin-top: auto;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed var(--border-strong);
+      color: var(--text-muted);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.82rem;
+    }
+
+    .editor-container {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel-strong);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .topbar {
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-soft);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 100%);
+      flex-wrap: wrap;
+    }
+
+    .topbar-group {
+      flex-wrap: wrap;
+    }
+
+    .toolbar-cluster {
+      flex-wrap: wrap;
+      border-radius: 10px;
+      padding: 3px;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border-soft);
+      margin: 0 2px;
+    }
+
+    .workspace-header {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 16px 16px 4px;
+    }
+
+    .title-row {
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .note-context {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      flex-wrap: wrap;
+    }
+
+    .note-context-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.55;
+    }
+
+    .section-select-shell {
+      min-width: 138px;
+    }
+
+    #title {
+      width: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-strong);
+      font-family: var(--font-ui);
+      font-size: clamp(1.45rem, 2vw, 2.1rem);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+      font-weight: 760;
+      outline: none;
+    }
+
+    #title::placeholder {
+      color: var(--text-soft);
+    }
+
+    .delete-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--danger-soft);
+      border-bottom: 1px solid rgba(255, 110, 124, 0.22);
+      color: var(--text-main);
+      flex-wrap: wrap;
+    }
+
+    .delete-banner.active {
+      display: flex;
+    }
+
+    .delete-banner-text {
+      color: var(--text-strong);
+      font-size: 0.82rem;
+    }
+
+    .delete-banner-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #statusOverlay {
+      display: none;
+      width: min(480px, calc(100% - 20px));
+      margin: 8px auto 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(143, 192, 255, 0.12);
+      border: 1px solid rgba(143, 192, 255, 0.16);
+      color: var(--text-strong);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    #statusOverlay[data-variant="error"] {
+      background: var(--danger-soft);
+      border-color: rgba(255, 110, 124, 0.18);
+    }
+
+    .editor-surface {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    #content {
+      width: min(760px, 100%);
+      min-height: calc(100vh - 180px);
+      margin: 0 auto;
+      padding: 10px 16px 32px;
+      outline: none;
+      color: var(--text-main);
+      font-family: var(--font-editor);
+      font-size: 1rem;
+      line-height: 1.58;
+    }
+
+    #content h1,
+    #content h2 {
+      color: var(--text-strong);
+      font-family: var(--font-ui);
+      line-height: 1.18;
+      letter-spacing: -0.03em;
+      margin: 0.9em 0 0.35em;
+    }
+
+    #content h1 {
+      font-size: 1.7rem;
+    }
+
+    #content h2 {
+      font-size: 1.24rem;
+    }
+
+    #content p,
+    #content ul,
+    #content ol,
+    #content blockquote {
+      margin: 0 0 0.7em;
+    }
+
+    #content ul,
+    #content ol {
+      padding-left: 1.2rem;
+    }
+
+    #content blockquote {
+      padding-left: 0.8rem;
+      border-left: 2px solid var(--accent);
+      color: var(--text-muted);
+    }
+
+    #content a {
+      color: var(--accent);
+    }
+
+    #content ul[data-list="checklist"] {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    #content ul[data-list="checklist"] li {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin: 0.3rem 0;
+    }
+
+    #content ul[data-list="checklist"] input[type="checkbox"] {
+      margin-top: 0.4rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    #floatingAI {
+      position: absolute;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      width: 260px;
+      padding: 8px;
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-lg);
+      z-index: 110;
+      backdrop-filter: blur(12px);
+    }
+
+    .floating-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    #floatingAI button {
+      min-height: 28px;
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      color: var(--text-main);
+      border-radius: 9px;
+      cursor: pointer;
+      padding: 0 8px;
+      font-size: 0.76rem;
+    }
+
+    #customPrompt {
+      border-radius: 10px;
+    }
+
+    #aiPanel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 8px;
+      background: rgba(6, 10, 14, 0.34);
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.22s ease, visibility 0.22s ease;
+      z-index: 100;
+    }
+
+    #aiPanel.closed {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .ai-dialog {
+      width: min(360px, 100%);
+      max-height: calc(100vh - 32px);
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+    }
+
+    .ai-header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ai-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 9px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .preset-select {
+      border: 1px solid var(--border-soft);
+      background: var(--bg-input);
+      color: var(--text-main);
+      border-radius: 9px;
+      padding: 5px 8px;
+      outline: none;
+      min-width: 100px;
+      font-size: 0.76rem;
+    }
+
+    #aiScrollArea {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .replacement-zone,
+    .chat-bubble {
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .replacement-zone {
+      display: none;
+    }
+
+    .chat-bubble {
+      color: var(--text-main);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .user-msg {
+      background: var(--bg-selected);
+      border-color: rgba(143, 192, 255, 0.14);
+    }
+
+    #applyBtn {
+      width: 100%;
+      margin-top: 8px;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: var(--success);
+      color: #0b1a14;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .chat-input-container {
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--border-soft);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 100%);
+    }
+
+    .ai-composer {
+      border-radius: 12px;
+      padding: 4px 4px 4px 8px;
+    }
+
+    #sidebarChatInput {
+      border: none;
+      background: transparent;
+      padding: 4px 2px;
+    }
+
+    .context-menu {
+      position: fixed;
+      z-index: 200;
+      display: none;
+      min-width: 170px;
+      padding: 4px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .context-menu.active {
+      display: block;
+    }
+
+    .context-menu button {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .context-menu button[hidden] {
+      display: none;
+    }
+
+    .context-menu button.danger {
+      color: var(--danger);
+    }
+
+    .context-menu hr {
+      border: none;
+      border-top: 1px solid var(--border-soft);
+      margin: 6px 0;
+    }
+
+    @media (max-width: 1180px) {
+      .app-shell {
+        padding: 6px;
+        gap: 6px;
+      }
+
+      :root {
+        --sidebar-width: 264px;
+      }
+
+      .workspace-header,
+      #content {
+        width: min(700px, 100%);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .app-shell {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      #navigationShell {
+        position: absolute;
+        z-index: 50;
+        inset: 6px auto 6px 6px;
+        height: calc(100vh - 12px);
+      }
+
+      #navigationShell.collapsed {
+        transform: translateX(-24px);
+      }
+
+      .editor-container {
+        width: 100%;
+      }
+
+      .topbar {
+        padding: 8px;
+      }
+
+      .workspace-header {
+        padding: 12px 10px 4px;
+      }
+
+      #content {
+        padding: 10px 10px 24px;
+      }
+
+      #aiPanel {
+        padding: 6px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .topbar,
+      .title-row,
+      .pages-pane-header,
+      .ai-header {
+        align-items: stretch;
+      }
+
+      .topbar-group,
+      .title-row,
+      .pages-pane-header {
+        flex-direction: column;
+      }
+
+      .toolbar-cluster {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .section-select-shell,
+      .preset-select {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .ai-dialog {
+        max-height: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="floatingAI">
-    <div class="floating-row">
-      <button onclick="aiContextual('simplify')">Simplify</button>
-      <button onclick="aiContextual('fix')">Fix</button>
-    </div>
-    <input type="text" id="customPrompt" placeholder="Replacement instruction..." onkeydown="if(event.key==='Enter') aiContextual('custom')">
-  </div>
-
-  <div id="navigationShell">
-    <aside class="sections-pane">
-      <div class="pages-pane-header">
-        <strong>Sections</strong>
+  <div class="app-shell">
+    <div id="floatingAI">
+      <div class="floating-row" style="justify-content:space-between;">
+        <span class="ai-label">Selection AI</span>
+        <button type="button" onclick="toggleAI()">Chat</button>
       </div>
-      <button id="newSectionBtn" class="tool-btn primary" type="button">+ New Section</button>
-      <div id="sectionCreator" class="section-creator">
-        <span id="sectionCreatorLabel" class="section-creator-label">Create section</span>
-        <input id="sectionNameInput" type="text" placeholder="Section name">
-        <div class="section-creator-actions">
-          <button id="saveSectionBtn" class="tool-btn primary" type="button">Save</button>
-          <button id="cancelSectionBtn" class="tool-btn" type="button">Cancel</button>
+      <div class="floating-grid">
+        <button type="button" onclick="aiContextual('simplify')">Simplify</button>
+        <button type="button" onclick="aiContextual('fix')">Fix</button>
+        <button type="button" onclick="aiContextual('custom')">Run</button>
+      </div>
+      <input type="text" id="customPrompt" placeholder="Rewrite instruction..." onkeydown="if(event.key==='Enter') aiContextual('custom')">
+    </div>
+
+    <div id="navigationShell">
+      <aside class="sections-pane">
+        <div class="sections-pane-top">
+          <div class="sidebar-brand">
+            <strong>Folio</strong>
+          </div>
+          <p class="sections-pane-title">Sections</p>
+          <button id="newSectionBtn" class="tool-btn primary" type="button">New</button>
+        </div>
+
+        <div id="sectionCreator" class="section-creator">
+          <span id="sectionCreatorLabel" class="section-creator-label">Create section</span>
+          <input id="sectionNameInput" type="text" placeholder="Section name">
+          <div class="section-creator-actions" style="display:flex; gap:8px;">
+            <button id="saveSectionBtn" class="tool-btn primary" type="button">Save</button>
+            <button id="cancelSectionBtn" class="tool-btn" type="button">Cancel</button>
+          </div>
+        </div>
+
+        <div id="sectionsList" class="sections-list"></div>
+      </aside>
+
+      <section class="pages-pane">
+        <div class="pages-pane-top">
+          <div class="pages-pane-header">
+            <div class="pages-pane-title-wrap">
+              <p class="pages-pane-heading">Pages</p>
+              <h2 id="pagesPaneTitle">All Pages</h2>
+            </div>
+            <button id="newPageBtn" class="tool-btn primary" type="button">New Page</button>
+          </div>
+
+          <div class="search-shell">
+            <input id="searchInput" type="text" placeholder="Search pages..." oninput="updateSearch(this.value)" onkeydown="if(event.key==='Escape'){ event.preventDefault(); clearSearch(); this.blur(); }">
+            <button class="tool-btn subtle-btn" type="button" onclick="clearSearch()">Clear</button>
+          </div>
+        </div>
+
+        <div id="pagesList" class="pages-list"></div>
+        <div id="pagesEmptyState" class="pages-empty">No pages match this view.</div>
+      </section>
+    </div>
+
+    <div class="editor-container">
+      <div class="topbar">
+        <div class="topbar-group">
+          <button class="tool-btn icon-btn" type="button" onclick="toggleNavigation()" title="Toggle navigation">&#9776;</button>
+          <div class="toolbar-cluster">
+            <button class="tool-btn format-btn" type="button" onclick="undo()" title="Undo">&#8630;</button>
+            <div class="toolbar-divider"></div>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('bold')" title="Bold (Ctrl/Cmd+B)">B</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('italic')" title="Italic (Ctrl/Cmd+I)"><em>I</em></button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('h1')" title="Heading 1 (Ctrl/Cmd+Alt+1)">H1</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('h2')" title="Heading 2 (Ctrl/Cmd+Alt+2)">H2</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('bullet')" title="Bullet List (Ctrl/Cmd+Shift+8)">&bull;</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('number')" title="Numbered List (Ctrl/Cmd+Shift+7)">1.</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('checklist')" title="Checklist">[]</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('quote')" title="Blockquote">"</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('link')" title="Add Link (Ctrl/Cmd+Shift+K)">Link</button>
+            <button class="tool-btn format-btn" type="button" onclick="formatSelection('unlink')" title="Remove Link">Off</button>
+          </div>
+        </div>
+
+        <div class="topbar-group">
+          <button id="themeToggleBtn" class="tool-btn" type="button" title="Toggle theme">Theme</button>
+          <button class="tool-btn" type="button" onclick="toggleAI()">AI Assistant</button>
         </div>
       </div>
-      <div id="sectionsList" class="sections-list"></div>
-    </aside>
 
-    <section class="pages-pane">
-      <div class="pages-pane-header">
-        <strong id="pagesPaneTitle">All Pages</strong>
-        <button id="newPageBtn" class="tool-btn primary" type="button">+ New Page</button>
+      <div id="deleteBanner" class="delete-banner">
+        <div id="deleteBannerText" class="delete-banner-text"></div>
+        <div class="delete-banner-actions">
+          <button id="confirmDeleteBtn" class="tool-btn danger" type="button">Delete</button>
+          <button id="cancelDeleteBtn" class="tool-btn" type="button">Cancel</button>
+        </div>
       </div>
-      <div class="search-shell">
-        <input id="searchInput" type="text" placeholder="Search pages..." oninput="updateSearch(this.value)" onkeydown="if(event.key==='Escape'){ event.preventDefault(); clearSearch(); this.blur(); }">
-        <button class="tool-btn" type="button" onclick="clearSearch()">Clear</button>
-      </div>
-      <div id="pagesList" class="pages-list"></div>
-      <div id="pagesEmptyState" class="pages-empty">No pages match this view.</div>
-    </section>
-  </div>
 
-  <div class="editor-container">
-    <div class="toolbar">
-      <button class="tool-btn" onclick="toggleNavigation()">Sections</button>
-      <button class="tool-btn" onclick="undo()">Undo</button>
-      <div class="toolbar-group">
-        <button class="tool-btn format-btn" onclick="formatSelection('bold')" title="Bold (Ctrl/Cmd+B)">B</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('italic')" title="Italic (Ctrl/Cmd+I)"><em>I</em></button>
-        <button class="tool-btn format-btn" onclick="formatSelection('h1')" title="Heading 1 (Ctrl/Cmd+Alt+1)">H1</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('h2')" title="Heading 2 (Ctrl/Cmd+Alt+2)">H2</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('bullet')" title="Bullet List (Ctrl/Cmd+Shift+8)">List</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('number')" title="Numbered List (Ctrl/Cmd+Shift+7)">1. List</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('checklist')" title="Checklist">[ ]</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('quote')" title="Blockquote">Quote</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('link')" title="Add Link (Ctrl/Cmd+Shift+K)">Link</button>
-        <button class="tool-btn format-btn" onclick="formatSelection('unlink')" title="Remove Link">Unlink</button>
-      </div>
-      <div style="flex:1"></div>
-      <button class="tool-btn" style="color:var(--accent)" onclick="toggleAI()">AI Assistant</button>
-    </div>
+      <div id="statusOverlay"></div>
 
-    <div id="deleteBanner" class="delete-banner">
-      <div id="deleteBannerText" class="delete-banner-text"></div>
-      <div class="delete-banner-actions">
-        <button id="confirmDeleteBtn" class="tool-btn danger" type="button">Delete</button>
-        <button id="cancelDeleteBtn" class="tool-btn" type="button">Cancel</button>
-      </div>
-    </div>
+      <div class="editor-surface">
+        <div class="workspace-header">
+          <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
+        </div>
 
-    <div class="workspace-header">
-      <input id="title" placeholder="Untitled" oninput="saveCurrentNote()">
-      <div class="editor-meta-row">
-        <span class="editor-meta-label">Section</span>
-        <div class="section-select-shell" style="min-width:220px;">
-          <select id="sectionSelect"></select>
+        <div id="content" contenteditable="true" oninput="saveCurrentNote()"></div>
+      </div>
+
+      <div id="aiPanel" class="closed">
+        <div class="ai-dialog">
+          <div class="ai-header">
+            <div class="ai-title-wrap">
+              <span class="ai-label">Assistant</span>
+              <div class="provider-shell">
+                <span id="providerName" class="provider-badge">Local Ollama</span>
+                <select id="modelPreset" class="preset-select" aria-label="Model preset"></select>
+              </div>
+            </div>
+            <button class="tool-btn icon-btn" type="button" onclick="toggleAI()" aria-label="Close AI panel">&times;</button>
+          </div>
+
+          <div id="aiScrollArea">
+            <div id="replacementArea" class="replacement-zone">
+              <div id="replacementText"></div>
+              <button id="applyBtn" onclick="applyReplacement()">Replace Selection</button>
+            </div>
+            <div id="chatHistory"></div>
+          </div>
+
+          <div class="chat-input-container">
+            <div class="ai-composer">
+              <input type="text" id="sidebarChatInput" placeholder="Ask about the current page..." onkeydown="if(event.key==='Enter') aiChat()">
+              <button class="tool-btn" type="button" onclick="aiChat()">Send</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="content" contenteditable="true" oninput="saveCurrentNote()"></div>
-  </div>
-
-  <div id="aiPanel">
-    <div id="statusOverlay"></div>
-    <div class="ai-header">
-      <div class="provider-shell">
-        <span style="font-size:0.76rem; font-weight:700; color:var(--accent)">AI</span>
-        <span id="providerName" class="provider-badge">Local Ollama</span>
-        <select id="modelPreset" class="preset-select" aria-label="Model preset"></select>
-      </div>
-      <button class="tool-btn" type="button" onclick="toggleAI()">Close</button>
+    <div id="itemContextMenu" class="context-menu">
+      <button id="contextPrimaryBtn" type="button" hidden></button>
+      <hr id="contextMenuDivider" hidden>
+      <button id="contextRenameBtn" type="button">Rename</button>
+      <button id="contextDeleteBtn" class="danger" type="button">Delete</button>
     </div>
-
-    <div id="aiScrollArea">
-      <div id="replacementArea" class="replacement-zone">
-        <div id="replacementText"></div>
-        <button id="applyBtn" onclick="applyReplacement()">Replace Selection</button>
-      </div>
-      <div id="chatHistory"></div>
-    </div>
-
-    <div class="chat-input-container">
-      <input type="text" id="sidebarChatInput" placeholder="Ask about the current page..." onkeydown="if(event.key==='Enter') aiChat()">
-    </div>
-  </div>
-
-  <div id="itemContextMenu" class="context-menu">
-    <button id="contextRenameBtn" type="button">Rename</button>
-    <button id="contextDeleteBtn" class="danger" type="button">Delete</button>
   </div>
 
   <script src="core/content.js"></script>

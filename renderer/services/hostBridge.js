@@ -11,7 +11,7 @@
             endpoint: 'http://localhost:11434'
           }
         ],
-        defaultModelPresetId: 'quick',
+        defaultModelPresetId: 'quality',
         modelPresets: [
           {
             id: 'quick',

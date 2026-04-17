@@ -5,6 +5,8 @@ const { BLOCK_TAGS, normalizeUrl, getMarkdownShortcut } = window.FolioEditorComm
 const hostBridge = window.FolioHostBridge.createBridge(window.folioAPI);
 const storage = window.FolioStorage.createStorage(hostBridge);
 const aiProvider = window.FolioAI.createAIProvider({ hostBridge });
+const THEME_STORAGE_KEY = 'folio-theme-mode';
+const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -31,9 +33,51 @@ const state = {
   contextMenu: {
     visible: false,
     type: null,
-    targetId: null
-  }
+    targetId: null,
+    primaryAction: null
+  },
+  themeMode: localStorage.getItem(THEME_STORAGE_KEY) || 'system'
 };
+
+function getThemeButtonLabel(mode) {
+  if (mode === 'dark') {
+    return 'Theme: Dark';
+  }
+
+  if (mode === 'light') {
+    return 'Theme: Light';
+  }
+
+  return 'Theme: Auto';
+}
+
+function applyTheme(mode = state.themeMode) {
+  state.themeMode = mode;
+  const root = document.documentElement;
+  if (mode === 'system') {
+    delete root.dataset.theme;
+  } else {
+    root.dataset.theme = mode;
+  }
+
+  const themeToggleButton = document.getElementById('themeToggleBtn');
+  if (themeToggleButton) {
+    themeToggleButton.textContent = getThemeButtonLabel(mode);
+    themeToggleButton.setAttribute('aria-label', `Color mode ${mode}`);
+  }
+}
+
+function cycleThemeMode() {
+  const nextMode = state.themeMode === 'system'
+    ? 'dark'
+    : state.themeMode === 'dark'
+      ? 'light'
+      : 'system';
+
+  localStorage.setItem(THEME_STORAGE_KEY, nextMode);
+  applyTheme(nextMode);
+  showTransientStatus(`Theme set to ${nextMode}`);
+}
 
 function getEditor() {
   return document.getElementById('content');
@@ -378,11 +422,21 @@ function getNoteById(noteId) {
 
 function closeContextMenu() {
   const menu = document.getElementById('itemContextMenu');
+  const primaryButton = document.getElementById('contextPrimaryBtn');
+  const divider = document.getElementById('contextMenuDivider');
   menu.classList.remove('active');
+  if (primaryButton) {
+    primaryButton.hidden = true;
+    primaryButton.textContent = '';
+  }
+  if (divider) {
+    divider.hidden = true;
+  }
   state.contextMenu = {
     visible: false,
     type: null,
-    targetId: null
+    targetId: null,
+    primaryAction: null
   };
 }
 
@@ -415,8 +469,22 @@ function requestDelete(type, targetId, label) {
 function openContextMenu(event, type, targetId) {
   event.preventDefault();
   const menu = document.getElementById('itemContextMenu');
+  const primaryButton = document.getElementById('contextPrimaryBtn');
+  const divider = document.getElementById('contextMenuDivider');
   const renameButton = document.getElementById('contextRenameBtn');
   const deleteButton = document.getElementById('contextDeleteBtn');
+  let primaryAction = null;
+
+  primaryButton.hidden = true;
+  primaryButton.textContent = '';
+  divider.hidden = true;
+
+  if (type === 'section') {
+    primaryButton.textContent = 'New Page In Section';
+    primaryButton.hidden = false;
+    divider.hidden = false;
+    primaryAction = 'new-page-in-section';
+  }
 
   renameButton.textContent = type === 'section' ? 'Rename Section' : 'Rename Page';
   deleteButton.textContent = type === 'section' ? 'Delete Section' : 'Delete Page';
@@ -424,7 +492,8 @@ function openContextMenu(event, type, targetId) {
   state.contextMenu = {
     visible: true,
     type,
-    targetId
+    targetId,
+    primaryAction
   };
 
   menu.style.left = `${event.clientX}px`;
@@ -524,19 +593,16 @@ function renderPages() {
 
     textShell.append(name, excerpt);
 
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'delete-btn';
-    deleteButton.textContent = 'Delete';
-    deleteButton.addEventListener('click', (event) => deleteNote(event, note.id));
-
-    item.append(textShell, deleteButton);
+    item.append(textShell);
     list.appendChild(item);
   });
 }
 
 function renderHeaderControls() {
   const select = document.getElementById('sectionSelect');
+  if (!select) {
+    return;
+  }
   const current = state.currentNote || getCurrentNoteMetadata();
   select.innerHTML = '';
 
@@ -626,6 +692,18 @@ function getNewNoteDefaults() {
 async function newNote() {
   await flushPendingSave();
   const note = await storage.createNote(getNewNoteDefaults());
+  await refreshCollections();
+  await openNote(note.id);
+  focusEditor();
+}
+
+async function newNoteInSection(sectionId) {
+  await flushPendingSave();
+  const note = await storage.createNote({
+    title: '',
+    content: '',
+    sectionId: sectionId || null
+  });
   await refreshCollections();
   await openNote(note.id);
   focusEditor();
@@ -825,21 +903,21 @@ function renderAiControls() {
     }
     presetSelect.appendChild(option);
   });
-  presetSelect.addEventListener('change', (event) => {
+  presetSelect.onchange = (event) => {
     aiProvider.setActivePresetId(event.target.value);
     const preset = aiProvider.getActivePreset();
     showTransientStatus(`Selected ${preset.label} (${preset.model})`);
-  });
+  };
 }
 
 async function ensureAiReady() {
   try {
     const preset = aiProvider.getActivePreset();
-    setStatus('Checking Ollama...');
+    setStatus(`Checking ${aiProvider.getProviderLabel()}...`);
     const available = await aiProvider.isAvailable();
     if (!available) {
       setStatus('');
-      setAiError('Ollama is offline. Start Ollama to use AI features.');
+      setAiError(`${aiProvider.getProviderLabel()} is offline. Start it or switch providers to use AI features.`);
       return false;
     }
     setStatus(`Loading ${preset.label} (${preset.model}) if needed. First reply can take a while.`);
@@ -953,7 +1031,14 @@ window.formatSelection = (type) => {
 };
 
 window.toggleNavigation = () => document.getElementById('navigationShell').classList.toggle('collapsed');
-window.toggleAI = () => document.getElementById('aiPanel').classList.toggle('closed');
+window.toggleAI = () => {
+  const panel = document.getElementById('aiPanel');
+  panel.classList.toggle('closed');
+  if (!panel.classList.contains('closed')) {
+    document.getElementById('floatingAI').style.display = 'none';
+    document.getElementById('sidebarChatInput')?.focus();
+  }
+};
 window.updateSearch = (value) => {
   state.searchQuery = normalizeSearchValue(value);
   renderPages();
@@ -1016,7 +1101,29 @@ document.addEventListener('click', (event) => {
   }
 });
 
+getEditor().addEventListener('contextmenu', (event) => {
+  const selection = window.getSelection();
+  const selectedText = selection?.toString().trim();
+  const clickedInsideEditor = event.target?.closest?.('#content');
+
+  if (!clickedInsideEditor || !selectedText || !isSelectionInsideEditor()) {
+    return;
+  }
+
+  captureSelection();
+  event.preventDefault();
+  document.getElementById('floatingAI').style.display = 'none';
+  const panel = document.getElementById('aiPanel');
+  panel.classList.remove('closed');
+  document.getElementById('sidebarChatInput')?.focus();
+});
+
 document.addEventListener('scroll', closeContextMenu, true);
+themeMediaQuery.addEventListener('change', () => {
+  if (state.themeMode === 'system') {
+    applyTheme('system');
+  }
+});
 
 getEditor().addEventListener('paste', (event) => {
   const clipboard = event.clipboardData;
@@ -1054,6 +1161,14 @@ getEditor().addEventListener('click', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    const aiPanel = document.getElementById('aiPanel');
+    if (aiPanel && !aiPanel.classList.contains('closed')) {
+      aiPanel.classList.add('closed');
+      return;
+    }
+  }
+
   if (event.key === 'Escape' && document.activeElement?.id === 'searchInput') {
     if (state.searchQuery || document.getElementById('searchInput')?.value) {
       event.preventDefault();
@@ -1118,6 +1233,14 @@ document.addEventListener('keydown', (event) => {
 document.getElementById('newSectionBtn').addEventListener('click', openSectionCreator);
 document.getElementById('saveSectionBtn').addEventListener('click', createSection);
 document.getElementById('cancelSectionBtn').addEventListener('click', closeSectionCreator);
+document.getElementById('themeToggleBtn').addEventListener('click', cycleThemeMode);
+document.getElementById('contextPrimaryBtn').addEventListener('click', async () => {
+  const { type, targetId, primaryAction } = state.contextMenu;
+  closeContextMenu();
+  if (type === 'section' && primaryAction === 'new-page-in-section') {
+    await newNoteInSection(targetId);
+  }
+});
 document.getElementById('contextRenameBtn').addEventListener('click', async () => {
   const { type, targetId } = state.contextMenu;
   closeContextMenu();
@@ -1162,11 +1285,17 @@ document.getElementById('sectionNameInput').addEventListener('keydown', (event) 
   }
 });
 document.getElementById('newPageBtn').addEventListener('click', newNote);
-document.getElementById('sectionSelect').addEventListener('change', (event) => {
+document.getElementById('sectionSelect')?.addEventListener('change', (event) => {
   moveCurrentNoteToSection(event.target.value || null);
+});
+document.getElementById('aiPanel').addEventListener('click', (event) => {
+  if (event.target.id === 'aiPanel') {
+    document.getElementById('aiPanel').classList.add('closed');
+  }
 });
 
 async function initialize() {
+  applyTheme(state.themeMode);
   renderAiControls();
   await refreshCollections();
   if (state.notes[0]) {
