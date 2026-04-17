@@ -134,6 +134,28 @@ function setStatus(message = '', isError = false) {
   overlay.dataset.variant = isError ? 'error' : 'info';
 }
 
+function clearStatus() {
+  setStatus('');
+}
+
+function openAiPanel({ focusInput = true } = {}) {
+  const panel = document.getElementById('aiPanel');
+  document.getElementById('floatingAI').style.display = 'none';
+  panel.classList.remove('closed');
+  if (focusInput) {
+    document.getElementById('sidebarChatInput')?.focus();
+  }
+}
+
+function toggleAiPanel() {
+  const panel = document.getElementById('aiPanel');
+  const willOpen = panel.classList.contains('closed');
+  panel.classList.toggle('closed');
+  if (willOpen) {
+    openAiPanel();
+  }
+}
+
 function showTransientStatus(message, isError = false) {
   setStatus(message, isError);
   clearTimeout(state.statusTimer);
@@ -145,7 +167,7 @@ function setAiError(message) {
   const text = document.getElementById('replacementText');
   area.style.display = 'block';
   text.textContent = message;
-  setStatus('', true);
+  setStatus(message, true);
 }
 
 function insertHtmlAtRange(range, html) {
@@ -912,19 +934,14 @@ function renderAiControls() {
 
 async function ensureAiReady() {
   try {
-    const preset = aiProvider.getActivePreset();
-    setStatus(`Checking ${aiProvider.getProviderLabel()}...`);
     const available = await aiProvider.isAvailable();
     if (!available) {
-      setStatus('');
       setAiError(`${aiProvider.getProviderLabel()} is offline. Start it or switch providers to use AI features.`);
       return false;
     }
-    setStatus(`Loading ${preset.label} (${preset.model}) if needed. First reply can take a while.`);
-    await aiProvider.ensureModelReady(setStatus);
+    await aiProvider.ensureModelReady();
     return true;
   } catch (error) {
-    setStatus('');
     setAiError(error.message || 'Unable to reach the selected AI provider.');
     return false;
   }
@@ -948,7 +965,8 @@ async function runAiRewrite(action) {
     return;
   }
 
-  document.getElementById('floatingAI').style.display = 'none';
+  clearStatus();
+  openAiPanel({ focusInput: false });
   if (!(await ensureAiReady())) {
     return;
   }
@@ -958,18 +976,15 @@ async function runAiRewrite(action) {
   area.style.display = 'block';
   text.innerHTML = '<em>Thinking...</em>';
   state.lastAiResult = '';
-  const preset = aiProvider.getActivePreset();
-  setStatus(`Generating with ${preset.label} (${preset.model})...`);
 
   try {
     await aiProvider.rewriteSelection(instruction, selectedText, (partial) => {
       state.lastAiResult = partial;
       text.innerHTML = marked.parse(partial);
-      setStatus(`Receiving response from ${preset.label}...`);
     });
-    setStatus('');
+    clearStatus();
   } catch (error) {
-    setStatus('');
+    setStatus(error.message || 'Error calling AI.', true);
     text.textContent = error.message || 'Error calling AI.';
   }
 }
@@ -981,6 +996,8 @@ async function runAiChat() {
     return;
   }
 
+  clearStatus();
+  openAiPanel();
   if (!(await ensureAiReady())) {
     return;
   }
@@ -996,17 +1013,14 @@ async function runAiChat() {
   aiBubble.className = 'chat-bubble';
   aiBubble.innerHTML = '<em>Thinking...</em>';
   history.prepend(aiBubble);
-  const preset = aiProvider.getActivePreset();
-  setStatus(`Generating with ${preset.label} (${preset.model})...`);
 
   try {
     await aiProvider.chat(getEditor().innerText, query, (partial) => {
       aiBubble.innerHTML = marked.parse(partial);
-      setStatus(`Receiving response from ${preset.label}...`);
     });
-    setStatus('');
+    clearStatus();
   } catch (error) {
-    setStatus('');
+    setStatus(error.message || 'AI Offline.', true);
     aiBubble.textContent = error.message || 'AI Offline.';
   }
 }
@@ -1031,14 +1045,7 @@ window.formatSelection = (type) => {
 };
 
 window.toggleNavigation = () => document.getElementById('navigationShell').classList.toggle('collapsed');
-window.toggleAI = () => {
-  const panel = document.getElementById('aiPanel');
-  panel.classList.toggle('closed');
-  if (!panel.classList.contains('closed')) {
-    document.getElementById('floatingAI').style.display = 'none';
-    document.getElementById('sidebarChatInput')?.focus();
-  }
-};
+window.toggleAI = toggleAiPanel;
 window.updateSearch = (value) => {
   state.searchQuery = normalizeSearchValue(value);
   renderPages();
@@ -1112,10 +1119,11 @@ getEditor().addEventListener('contextmenu', (event) => {
 
   captureSelection();
   event.preventDefault();
-  document.getElementById('floatingAI').style.display = 'none';
-  const panel = document.getElementById('aiPanel');
-  panel.classList.remove('closed');
-  document.getElementById('sidebarChatInput')?.focus();
+  const floating = document.getElementById('floatingAI');
+  const rect = state.lastRange.getBoundingClientRect();
+  floating.style.display = 'flex';
+  floating.style.top = `${rect.top + window.scrollY - 85}px`;
+  floating.style.left = `${rect.left + window.scrollX}px`;
 });
 
 document.addEventListener('scroll', closeContextMenu, true);

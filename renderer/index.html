@@ -605,20 +605,23 @@
 
     #statusOverlay {
       display: none;
-      width: min(480px, calc(100% - 20px));
+      width: min(320px, calc(100% - 24px));
       margin: 8px auto 0;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: rgba(143, 192, 255, 0.12);
-      border: 1px solid rgba(143, 192, 255, 0.16);
-      color: var(--text-strong);
-      font-size: 0.76rem;
-      font-weight: 700;
+      padding: 5px 8px;
+      border-radius: 8px;
+      background: rgba(143, 192, 255, 0.06);
+      border: 1px solid rgba(143, 192, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.01em;
     }
 
     #statusOverlay[data-variant="error"] {
       background: var(--danger-soft);
       border-color: rgba(255, 110, 124, 0.18);
+      color: var(--text-main);
     }
 
     .editor-surface {

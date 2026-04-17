@@ -28,17 +28,13 @@
       }
     }
 
-    async function ensureModelReady(onStatus) {
+    async function ensureModelReady() {
       const provider = getProvider();
       const preset = getActivePreset();
       const listData = await fetchJson(`${provider.endpoint}/api/tags`);
       const exists = listData.models?.some((model) => model.name.startsWith(preset.model.split(':')[0]));
       if (exists) {
         return true;
-      }
-
-      if (typeof onStatus === 'function') {
-        onStatus(`Downloading ${preset.label} model...`);
       }
 
       await fetchJson(`${provider.endpoint}/api/pull`, {
